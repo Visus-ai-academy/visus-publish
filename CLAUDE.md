@@ -18,28 +18,33 @@ Idioma: interface, mensagens de erro e textos em **português do Brasil**. Códi
 ## Comandos
 
 ```bash
-pnpm dev                 # app local
-pnpm test                # unidade
-pnpm test:e2e            # Playwright
+pnpm dev                 # app local (precisa de .env.local, ver .env.example)
 pnpm lint && pnpm typecheck
-supabase start           # banco local
-supabase db reset        # aplica migrations + seed
-supabase functions serve # edge functions locais
+pnpm test                # unidade (lib/**/*.test.ts)
+pnpm test:rls            # isolamento e papéis contra o Supabase local (tests/rls)
+pnpm test:e2e            # Playwright (precisa de db reset + db:seed e build)
+pnpm db:seed             # usuários e clientes de exemplo, só no Supabase local
+supabase start           # banco local (pnpm exec supabase …)
+supabase db reset        # aplica migrations
+supabase gen types typescript --local > lib/supabase/database.types.ts   # após mudar o schema
 ```
 
-(Ajuste se o scaffold gerar scripts diferentes, e atualize esta seção.)
+Notas do scaffold:
+- Next 16: `proxy.ts` substitui `middleware.ts`; `cacheComponents` está ligado, por isso o cliente Supabase do servidor chama `connection()` e o layout raiz envolve as telas em `<Suspense>`.
+- shadcn/ui: o CLI não alcançou o registro na criação; os componentes básicos estão escritos à mão em `components/ui/` no mesmo padrão. Rode `pnpm dlx shadcn@latest init` quando tiver rede e migre.
 
 ## Regras inegociáveis
 
 1. **Multi-tenant:** toda tabela de negócio tem `tenant_id` + RLS. Nenhuma query no servidor com `service_role` sem `where tenant_id = …` explícito. Nova tabela = nova policy + teste de isolamento no mesmo PR.
 2. **Segredos:** tokens da Meta e chaves de IA só no Supabase Vault. Nunca no client, em logs, em `NEXT_PUBLIC_*` ou em respostas da API.
 3. **Chamadas externas** (Meta, OpenAI, Google, Higgsfield, Canva) só no servidor ou em Edge Functions.
-4. **Estados do post** seguem a máquina da SPEC §6. Mudança de status só por função do domínio (`lib/posts/transitions.ts`), que grava `post_events`. Aprovação usa a função SQL `review_post`.
+4. **Estados do post** seguem a máquina da SPEC §6. Mudança de status só por função do domínio (`lib/posts/transitions.ts`), que grava `post_events`. Aprovação usa a função SQL `review_post`; transições de pessoa usam `transition_post`. O trigger `guard_post_columns` bloqueia o papel `authenticated` de mudar status ou colunas de publicação direto.
 5. **Publicação idempotente:** usar `claim_due_posts` (skip locked). Nunca publicar duas vezes o mesmo post; guardar `ig_container_id` antes de `media_publish`.
 6. **Limite da Meta:** consultar `content_publishing_limit` antes de publicar; não fixar o número no código.
 7. **Modelos de IA** vêm da tabela `ai_models`; não hardcodar nomes de modelo.
 8. **Conteúdo de saúde** (`brand_profiles.is_healthcare`): aplicar as regras de publicidade médica da SPEC §5 e forçar aprovação quando a checagem marcar risco.
 9. **Conteúdo gerado por IA** publica com `is_ai_generated=true`.
+10. **Integridade entre clientes:** tabela filha referencia o pai por FK composta `(id, tenant_id)`, para nunca apontar para linha de outro cliente.
 
 ## Estrutura
 
@@ -50,7 +55,8 @@ app/admin/clientes
 app/api/meta/oauth/callback     OAuth do Instagram
 lib/supabase/{server,client}.ts
 lib/tenant.ts                   resolve tenant ativo (cookie vp_tenant) e valida membership
-lib/posts/transitions.ts        máquina de estados
+lib/posts/transitions.ts        máquina de estados (chama transition_post / review_post no banco)
+lib/invitations/                convites (token aleatório; banco guarda só sha256)
 lib/meta/                       cliente da Instagram API (container, publish, insights, tokens)
 lib/ai/providers/               openai, gemini, gemini-image, canva, higgsfield, veo (interface única)
 lib/ai/prompts/                 caption, image, carousel, themes, analysis (+ schemas Zod)

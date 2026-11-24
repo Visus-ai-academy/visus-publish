@@ -1,0 +1,1106 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<title>Visus Publish — agendamento e publicação no Instagram</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+body{margin:0;background:#FFFFFF;color:#16181D;font-family:"Plus Jakarta Sans",system-ui,sans-serif;font-size:14px;line-height:1.5;-webkit-font-smoothing:antialiased}
+a{color:#16181D}a:hover{color:#4A5D23}
+button,input,select,textarea{font-family:inherit;font-size:14px;color:inherit}
+:focus-visible{outline:2px solid #4A5D23;outline-offset:2px}
+.num{font-variant-numeric:tabular-nums}
+.btn{display:inline-flex;align-items:center;justify-content:center;gap:8px;min-height:40px;padding:0 14px;border-radius:8px;border:1px solid #D4D4CE;background:#FFFFFF;color:#16181D;font-weight:600;cursor:pointer;white-space:nowrap;transition:background-color 120ms ease,border-color 120ms ease,transform 100ms ease}
+.btn:hover{background:#F6F6F3;border-color:#C4C4BD}
+.btn:active{transform:scale(0.98)}
+.btn-primary{background:#16181D;border-color:#16181D;color:#FFFFFF}
+.btn-primary:hover{background:#2C2F36;border-color:#2C2F36}
+.btn-danger{color:#A3261A}
+.btn-sm{min-height:32px;padding:0 10px;font-size:13px}
+.seg{display:inline-flex;gap:2px;padding:3px;border-radius:10px;background:#F1F1EE;flex-wrap:wrap}
+.seg button{min-height:38px;padding:0 12px;border:0;border-radius:7px;font-weight:600;font-size:13px;cursor:pointer;transition:background-color 120ms ease,color 120ms ease}
+.nav{display:flex;align-items:center;gap:10px;width:100%;min-height:36px;padding:0 10px;border:0;border-radius:7px;font-weight:500;font-size:14px;cursor:pointer;text-align:left;transition:background-color 120ms ease}
+.nav:hover{background:#ECECE8}
+.field{display:flex;flex-direction:column;gap:6px;font-size:13px;font-weight:600;color:#16181D}
+.field input,.field select{min-height:40px;padding:0 12px;border:1px solid #D4D4CE;border-radius:8px;background:#FFFFFF;font-weight:400;transition:border-color 120ms ease}
+.field input:hover,.field select:hover{border-color:#B5B5AE}
+.chip{display:flex;align-items:center;gap:6px;width:100%;min-height:26px;padding:3px 6px;border-radius:6px;border:1px solid #E6E6E1;background:#FFFFFF;text-align:left;cursor:pointer;font-size:12px;line-height:1.3;transition:border-color 120ms ease,transform 120ms ease}
+.chip:hover{border-color:#16181D;transform:translateY(-1px)}
+.row-hover{transition:background-color 120ms ease}
+.row-hover:hover{background:#FAFAF8}
+.ig-card{transition:transform 160ms ease,box-shadow 160ms ease}
+.ig-card:hover{transform:translateY(-2px);box-shadow:0 8px 24px rgba(22,24,29,0.08)}
+th{font-weight:500;color:#5E6168;font-size:12px;text-align:left;padding:10px 12px;border-bottom:1px solid #E6E6E1;white-space:nowrap}
+td{padding:12px;border-bottom:1px solid #F0F0EC;vertical-align:middle}
+@keyframes vp-slide{from{transform:translateX(24px);opacity:0}to{transform:none;opacity:1}}
+@keyframes vp-fade{from{opacity:0}to{opacity:1}}
+@keyframes vp-pulse{0%,100%{opacity:1}50%{opacity:0.35}}
+.drawer{animation:vp-slide 220ms cubic-bezier(0.2,0.8,0.2,1)}
+.backdrop{animation:vp-fade 160ms ease-out}
+.pulse{animation:vp-pulse 1.4s ease-in-out infinite}
+@media (prefers-reduced-motion: reduce){*{animation:none !important;transition:none !important}}
+</style>
+</helmet>
+<div style="min-height: 100vh; display: flex; flex-wrap: wrap; background: #FFFFFF">
+
+<nav aria-label="Menu principal" style="flex: 1 1 248px; max-width: 100%; background: #F6F6F3; border-right: 1px solid #E6E6E1; padding: 16px 12px; box-sizing: border-box; display: flex; flex-direction: column; gap: 18px">
+<div style="display: flex; align-items: center; gap: 10px; padding: 4px 8px">
+<svg aria-hidden="true" width="26" height="26" viewBox="0 0 26 26"><rect width="26" height="26" rx="7" fill="#16181D"></rect><path d="M8 7.5h5.2a4 4 0 0 1 0 8H10.6V19" fill="none" stroke="#FFFFFF" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"></path><circle cx="18.6" cy="18.4" r="1.9" fill="#A9C25A"></circle></svg>
+<span style="font-weight: 700; font-size: 15px; letter-spacing: -0.01em">Visus Publish</span>
+</div>
+<label for="f-tenant" style="display: flex; flex-direction: column; gap: 6px; padding: 0 4px; font-size: 12px; font-weight: 500; color: #5E6168">Cliente
+<select id="f-tenant" value="{{tenantId}}" onChange="{{onTenant}}" style="min-height: 40px; padding: 0 10px; border-radius: 8px; border: 1px solid #D4D4CE; background: #FFFFFF; color: #16181D; font-weight: 600">
+<sc-for list="{{tenants}}" as="tn" hint-placeholder-count="3"><option value="{{tn.id}}">{{tn.name}}</option></sc-for>
+</select>
+</label>
+<sc-for list="{{navGroups}}" as="g" hint-placeholder-count="4">
+<div style="display: flex; flex-direction: column; gap: 2px">
+<span style="font-size: 12px; font-weight: 500; color: #5E6168; padding: 0 10px 4px">{{g.label}}</span>
+<sc-for list="{{g.items}}" as="n" hint-placeholder-count="3">
+<button class="nav" style="{{n.style}}" onClick="{{n.go}}" aria-current="{{n.current}}">
+<svg aria-hidden="true" width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="{{n.d1}}"></path><path d="{{n.d2}}"></path><path d="{{n.d3}}"></path></svg>
+<span style="flex: 1">{{n.label}}</span>
+<sc-if value="{{n.hasBadge}}" hint-placeholder-val="{{ false }}"><span class="num" style="min-width: 20px; height: 20px; padding: 0 6px; box-sizing: border-box; border-radius: 999px; background: #16181D; color: #FFFFFF; font-size: 11px; font-weight: 600; display: inline-flex; align-items: center; justify-content: center">{{n.badge}}</span></sc-if>
+</button>
+</sc-for>
+</div>
+</sc-for>
+<div style="margin-top: auto; padding: 12px 10px; border-top: 1px solid #E6E6E1; display: flex; align-items: center; gap: 10px">
+<span aria-hidden="true" style="width: 30px; height: 30px; border-radius: 999px; background: #16181D; color: #FFFFFF; font-size: 12px; font-weight: 700; display: inline-flex; align-items: center; justify-content: center">V</span>
+<div style="display: flex; flex-direction: column; min-width: 0">
+<span style="font-size: 13px; font-weight: 600">{{tenantName}}</span>
+<span style="font-size: 12px; color: #5E6168">Plano {{tenantPlan}} · {{accountCount}} contas</span>
+</div>
+</div>
+</nav>
+
+<main style="flex: 999 1 560px; min-width: 0; display: flex; flex-direction: column">
+<header style="border-bottom: 1px solid #E6E6E1; padding: 18px 32px; display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 12px">
+<div style="display: flex; flex-direction: column; gap: 2px; min-width: 0">
+<h1 style="margin: 0; font-size: 20px; font-weight: 700; letter-spacing: -0.015em">{{screenTitle}}</h1>
+<p style="margin: 0; color: #5E6168; font-size: 13px">{{screenSub}}</p>
+</div>
+<div style="display: flex; gap: 8px; flex-wrap: wrap">
+<button class="btn" onClick="{{goUpload}}">
+<svg aria-hidden="true" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 15V4"></path><path d="M7.5 8.5L12 4l4.5 4.5"></path><path d="M4 15v4a1 1 0 0 0 1 1h14a1 1 0 0 0 1-1v-4"></path></svg>
+Subir criativo</button>
+<button class="btn btn-primary" onClick="{{goPlan}}">
+<svg aria-hidden="true" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M12 5v14M5 12h14"></path></svg>
+Nova publicação</button>
+</div>
+</header>
+
+<div style="padding: 24px 32px 48px; display: flex; flex-direction: column; gap: 20px; max-width: 1360px; width: 100%; box-sizing: border-box">
+
+<sc-if value="{{isCal}}" hint-placeholder-val="{{ true }}">
+<section aria-labelledby="h-cal" style="display: flex; flex-direction: column; gap: 14px">
+<div style="display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 12px">
+<div style="display: flex; align-items: baseline; gap: 10px">
+<h2 id="h-cal" style="margin: 0; font-size: 17px; font-weight: 700">Dezembro de 2026</h2>
+<span class="num" style="font-size: 13px; color: #5E6168">{{calCount}} publicações</span>
+</div>
+<div class="seg" role="group" aria-label="Filtrar por conta">
+<sc-for list="{{accFilters}}" as="f" hint-placeholder-count="3"><button style="{{f.style}}" onClick="{{f.pick}}" aria-pressed="{{f.pressed}}">{{f.label}}</button></sc-for>
+</div>
+</div>
+<div style="display: flex; flex-wrap: wrap; gap: 16px; font-size: 12px; color: #5E6168">
+<sc-for list="{{legend}}" as="l" hint-placeholder-count="6">
+<span style="display: inline-flex; align-items: center; gap: 6px"><span style="{{l.dot}}"></span>{{l.label}}</span>
+</sc-for>
+</div>
+<div style="overflow-x: auto; border: 1px solid #E6E6E1; border-radius: 10px">
+<div style="min-width: 840px">
+<div style="display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); border-bottom: 1px solid #E6E6E1; background: #FAFAF8">
+<sc-for list="{{weekdays}}" as="w" hint-placeholder-count="7">
+<div style="font-size: 12px; font-weight: 500; color: #5E6168; padding: 8px 10px">{{w}}</div>
+</sc-for>
+</div>
+<div style="display: grid; grid-template-columns: repeat(7, minmax(0, 1fr))">
+<sc-for list="{{cells}}" as="c" hint-placeholder-count="35">
+<div style="{{c.style}}">
+<span class="num" style="{{c.numStyle}}">{{c.label}}</span>
+<sc-for list="{{c.chips}}" as="ch" hint-placeholder-count="1">
+<button class="chip" onClick="{{ch.open}}" aria-label="{{ch.aria}}">
+<span style="{{ch.accDot}}"></span>
+<span class="num" style="font-weight: 600; color: #16181D">{{ch.time}}</span>
+<span style="flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: #3A3D44">{{ch.theme}}</span>
+<span style="{{ch.stDot}}"></span>
+</button>
+</sc-for>
+</div>
+</sc-for>
+</div>
+</div>
+</div>
+</section>
+</sc-if>
+
+<sc-if value="{{isPlan}}" hint-placeholder-val="{{ false }}">
+<section aria-labelledby="h-plan" style="display: flex; flex-wrap: wrap; gap: 20px; align-items: flex-start">
+<div style="flex: 1 1 300px; border: 1px solid #E6E6E1; border-radius: 10px; padding: 18px; box-sizing: border-box; display: flex; flex-direction: column; gap: 14px">
+<h2 id="h-plan" style="margin: 0; font-size: 15px; font-weight: 700">Adicionar ao planejamento</h2>
+<label class="field" for="f-acc">Conta
+<select id="f-acc" value="{{planAcc}}" onChange="{{onPlanAcc}}">
+<sc-for list="{{accounts}}" as="a" hint-placeholder-count="3"><option value="{{a.id}}">{{a.handle}}</option></sc-for>
+</select>
+</label>
+<div style="display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px">
+<label class="field" for="f-day">Dia de dezembro
+<input id="f-day" class="num" type="number" min="1" max="31" value="{{draft.day}}" onChange="{{onDay}}">
+</label>
+<label class="field" for="f-time">Horário
+<input id="f-time" class="num" type="time" value="{{draft.time}}" onChange="{{onTime}}">
+</label>
+</div>
+<label class="field" for="f-format">Formato
+<select id="f-format" value="{{draft.format}}" onChange="{{onFormat}}">
+<option value="Foto">Foto</option>
+<option value="Carrossel">Carrossel</option>
+<option value="Reels">Reels</option>
+<option value="Stories">Stories</option>
+</select>
+</label>
+<label class="field" for="f-theme">Tema
+<input id="f-theme" type="text" value="{{draft.theme}}" onChange="{{onTheme}}">
+<span style="font-weight: 400; font-size: 12px; color: #5E6168">Ex.: como reduzir faltas em consultas</span>
+</label>
+<div style="display: flex; gap: 8px; flex-wrap: wrap">
+<button class="btn btn-primary" onClick="{{addRow}}">Adicionar tema</button>
+<button class="btn" onClick="{{suggest}}">Sugerir temas com IA</button>
+</div>
+<div style="border-top: 1px solid #E6E6E1; padding-top: 14px; display: flex; flex-direction: column; gap: 8px">
+<span style="font-size: 13px; font-weight: 600">Depois de gerar, {{planAccObj.handle}}</span>
+<div class="seg" role="group" aria-label="Modo de publicação">
+<button style="{{planModeA}}" onClick="{{setPlanApprove}}">Pede aprovação</button>
+<button style="{{planModeB}}" onClick="{{setPlanDirect}}">Publica direto</button>
+</div>
+<span style="font-size: 12px; color: #5E6168">{{planModeHint}}</span>
+</div>
+</div>
+
+<div style="flex: 999 1 560px; min-width: 0; border: 1px solid #E6E6E1; border-radius: 10px; box-sizing: border-box; display: flex; flex-direction: column">
+<div style="display: flex; flex-wrap: wrap; justify-content: space-between; align-items: center; gap: 12px; padding: 14px 16px; border-bottom: 1px solid #E6E6E1">
+<div style="display: flex; flex-direction: column">
+<h2 style="margin: 0; font-size: 15px; font-weight: 700">Plano de dezembro · {{planAccObj.handle}}</h2>
+<span class="num" style="font-size: 12px; color: #5E6168">{{planRowsCount}} itens · {{planPending}} sem conteúdo gerado</span>
+</div>
+<button class="btn btn-primary" onClick="{{generateAll}}">Gerar legendas e criativos</button>
+</div>
+<div style="overflow-x: auto">
+<table style="width: 100%; min-width: 660px; border-collapse: collapse; font-size: 13px">
+<thead><tr><th>Data</th><th>Tema</th><th>Formato</th><th>Gerado por</th><th>Status</th><th><span style="position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0)">Ações</span></th></tr></thead>
+<tbody>
+<sc-for list="{{planRows}}" as="r" hint-placeholder-count="6">
+<tr class="row-hover">
+<td class="num" style="white-space: nowrap; font-weight: 600">{{r.dateLabel}}</td>
+<td>{{r.theme}}</td>
+<td style="color: #3A3D44">{{r.format}}</td>
+<td style="color: #3A3D44">{{r.providerLabel}}</td>
+<td><span style="{{r.badgeStyle}}"><span style="{{r.dotStyle}}"></span>{{r.statusLabel}}</span></td>
+<td style="text-align: right"><button class="btn btn-sm" onClick="{{r.open}}">Abrir</button></td>
+</tr>
+</sc-for>
+</tbody>
+</table>
+</div>
+</div>
+</section>
+</sc-if>
+
+<sc-if value="{{isApprove}}" hint-placeholder-val="{{ false }}">
+<section aria-label="Fila de aprovação" style="display: flex; flex-direction: column; gap: 16px">
+<sc-if value="{{noPending}}" hint-placeholder-val="{{ false }}">
+<div style="border: 1px dashed #D4D4CE; border-radius: 10px; padding: 48px 24px; display: flex; flex-direction: column; gap: 8px; align-items: flex-start; max-width: 560px">
+<h2 style="margin: 0; font-size: 17px; font-weight: 700">Nenhuma publicação esperando você</h2>
+<p style="margin: 0; color: #5E6168">Conteúdos gerados para contas que pedem aprovação aparecem aqui. Contas que publicam direto vão para o calendário como agendadas.</p>
+<button class="btn" onClick="{{goPlan}}" style="margin-top: 8px">Abrir planejamento</button>
+</div>
+</sc-if>
+<div style="display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: 20px">
+<sc-for list="{{pending}}" as="p" hint-placeholder-count="3">
+<article class="ig-card" style="border: 1px solid #E6E6E1; border-radius: 12px; overflow: hidden; display: flex; flex-direction: column; background: #FFFFFF">
+<div style="display: flex; align-items: center; gap: 10px; padding: 10px 12px">
+<span aria-hidden="true" style="{{p.avatar}}">{{p.initial}}</span>
+<div style="display: flex; flex-direction: column; flex: 1; min-width: 0">
+<span style="font-weight: 600; font-size: 13px">{{p.handle}}</span>
+<span class="num" style="font-size: 12px; color: #5E6168">{{p.dateLabel}}</span>
+</div>
+<span style="font-size: 12px; color: #5E6168">{{p.format}}</span>
+</div>
+<div style="{{p.media}}">
+<span style="font-size: 12px; font-weight: 600; color: rgba(255,255,255,0.8)">{{p.handle}}</span>
+<span style="font-weight: 700; font-size: 24px; line-height: 1.12; letter-spacing: -0.02em; color: #FFFFFF; text-wrap: balance">{{p.theme}}</span>
+<span style="font-size: 12px; color: rgba(255,255,255,0.8)">{{p.providerLabel}}</span>
+</div>
+<div style="padding: 12px; display: flex; flex-direction: column; gap: 12px; flex: 1">
+<p style="margin: 0; font-size: 13px; color: #3A3D44; white-space: pre-line; display: -webkit-box; -webkit-line-clamp: 4; -webkit-box-orient: vertical; overflow: hidden"><strong style="color: #16181D">{{p.handle}}</strong> {{p.caption}}</p>
+<div style="margin-top: auto; display: flex; gap: 8px; flex-wrap: wrap">
+<button class="btn btn-primary" onClick="{{p.approve}}">Aprovar</button>
+<button class="btn btn-danger" onClick="{{p.reject}}">Reprovar</button>
+<button class="btn" onClick="{{p.regen}}">Gerar de novo</button>
+<button class="btn" onClick="{{p.open}}" aria-label="Ver detalhes">Detalhes</button>
+</div>
+</div>
+</article>
+</sc-for>
+</div>
+</section>
+</sc-if>
+
+<sc-if value="{{isUpload}}" hint-placeholder-val="{{ false }}">
+<section aria-label="Criativos prontos" style="display: flex; flex-wrap: wrap; gap: 20px; align-items: flex-start">
+<label for="f-upload" style="flex: 1 1 320px; border: 1.5px dashed #C4C4BD; border-radius: 10px; padding: 28px; box-sizing: border-box; display: flex; flex-direction: column; gap: 10px; cursor: pointer; background: #FAFAF8">
+<svg aria-hidden="true" width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="#16181D" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M4 5h16v14H4z"></path><path d="M4 16l5-5 4 4 2-2 5 5"></path><circle cx="15.5" cy="9" r="1.2"></circle></svg>
+<span style="font-weight: 700; font-size: 15px">Selecione fotos, vídeos ou artes prontas</span>
+<span style="font-size: 13px; color: #5E6168">JPG, PNG, MP4 ou MOV. Para carrossel, até 10 arquivos.</span>
+<input id="f-upload" type="file" multiple accept="image/*,video/*" onChange="{{onUpload}}" style="font-size: 13px">
+</label>
+<div style="flex: 999 1 520px; min-width: 0; border: 1px solid #E6E6E1; border-radius: 10px">
+<div style="display: flex; flex-wrap: wrap; gap: 12px; align-items: flex-end; justify-content: space-between; padding: 14px 16px; border-bottom: 1px solid #E6E6E1">
+<h2 style="margin: 0; font-size: 15px; font-weight: 700">Biblioteca</h2>
+<label class="field" for="f-upacc" style="min-width: 220px">Agendar em
+<select id="f-upacc" value="{{planAcc}}" onChange="{{onPlanAcc}}">
+<sc-for list="{{accounts}}" as="a2" hint-placeholder-count="3"><option value="{{a2.id}}">{{a2.handle}}</option></sc-for>
+</select>
+</label>
+</div>
+<sc-for list="{{uploads}}" as="u" hint-placeholder-count="2">
+<div class="row-hover" style="display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 12px; padding: 12px 16px; border-bottom: 1px solid #F0F0EC">
+<div style="display: flex; align-items: center; gap: 12px; min-width: 0">
+<span style="width: 40px; height: 40px; border-radius: 6px; background: #F1F1EE; color: #3A3D44; font-size: 11px; font-weight: 600; display: flex; align-items: center; justify-content: center">{{u.ext}}</span>
+<div style="display: flex; flex-direction: column; min-width: 0">
+<span style="font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap">{{u.name}}</span>
+<span class="num" style="font-size: 12px; color: #5E6168">{{u.info}}</span>
+</div>
+</div>
+<sc-if value="{{u.pending}}" hint-placeholder-val="{{ true }}">
+<button class="btn" onClick="{{u.schedule}}">Agendar com legenda da IA</button>
+</sc-if>
+<sc-if value="{{u.done}}" hint-placeholder-val="{{ false }}">
+<span style="font-size: 13px; color: #1F6B3A; font-weight: 600">{{u.doneLabel}}</span>
+</sc-if>
+</div>
+</sc-for>
+<sc-if value="{{noUploads}}" hint-placeholder-val="{{ false }}">
+<p style="margin: 0; padding: 24px 16px; color: #5E6168">Nenhum arquivo deste cliente ainda.</p>
+</sc-if>
+</div>
+</section>
+</sc-if>
+
+<sc-if value="{{isAccounts}}" hint-placeholder-val="{{ false }}">
+<section aria-labelledby="h-acc" style="border: 1px solid #E6E6E1; border-radius: 10px">
+<div style="display: flex; flex-wrap: wrap; justify-content: space-between; align-items: center; gap: 12px; padding: 14px 16px; border-bottom: 1px solid #E6E6E1">
+<div style="display: flex; flex-direction: column">
+<h2 id="h-acc" style="margin: 0; font-size: 15px; font-weight: 700">Contas de {{tenantName}}</h2>
+<span style="font-size: 12px; color: #5E6168">Contas profissionais conectadas pelo login da Meta. Sem limite por cliente.</span>
+</div>
+<button class="btn btn-primary" onClick="{{addAccount}}">Conectar conta do Instagram</button>
+</div>
+<div style="overflow-x: auto">
+<table style="width: 100%; min-width: 660px; border-collapse: collapse">
+<thead><tr><th>Conta</th><th>Conexão</th><th>Dezembro</th><th>Conteúdo gerado</th></tr></thead>
+<tbody>
+<sc-for list="{{accountCards}}" as="ac" hint-placeholder-count="2">
+<tr class="row-hover">
+<td><div style="display: flex; align-items: center; gap: 10px"><span aria-hidden="true" style="{{ac.avatar}}">{{ac.initial}}</span><div style="display: flex; flex-direction: column"><span style="font-weight: 600">{{ac.handle}}</span><span style="font-size: 12px; color: #5E6168">{{ac.name}}</span></div></div></td>
+<td><span style="display: inline-flex; align-items: center; gap: 6px; font-size: 13px; color: #1F6B3A"><span style="width: 6px; height: 6px; border-radius: 999px; background: #2E8B57"></span>Conectada</span></td>
+<td class="num" style="font-size: 13px">{{ac.count}} publicações</td>
+<td><div class="seg" role="group" aria-label="Modo de publicação"><button style="{{ac.modeA}}" onClick="{{ac.setApprove}}">Pede aprovação</button><button style="{{ac.modeB}}" onClick="{{ac.setDirect}}">Publica direto</button></div></td>
+</tr>
+</sc-for>
+</tbody>
+</table>
+</div>
+<sc-if value="{{noAccounts}}" hint-placeholder-val="{{ false }}">
+<p style="margin: 0; padding: 24px 16px; color: #5E6168">Este cliente ainda não tem contas conectadas.</p>
+</sc-if>
+</section>
+</sc-if>
+
+<sc-if value="{{isInsights}}" hint-placeholder-val="{{ false }}">
+<section aria-label="Insights" style="display: flex; flex-direction: column; gap: 20px">
+<div style="display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 12px">
+<div class="seg" role="group" aria-label="Conta">
+<sc-for list="{{insAccPills}}" as="ip" hint-placeholder-count="2"><button style="{{ip.style}}" onClick="{{ip.pick}}">{{ip.label}}</button></sc-for>
+</div>
+<span style="font-size: 12px; color: #5E6168">Últimos 30 dias · números de demonstração</span>
+</div>
+<div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); border: 1px solid #E6E6E1; border-radius: 10px; overflow: hidden">
+<sc-for list="{{kpis}}" as="k" hint-placeholder-count="6">
+<div style="padding: 14px 16px; border-right: 1px solid #E6E6E1; border-bottom: 1px solid #E6E6E1; margin: 0 -1px -1px 0; display: flex; flex-direction: column; gap: 2px">
+<span style="font-size: 12px; color: #5E6168">{{k.label}}</span>
+<span class="num" style="font-size: 22px; font-weight: 700; letter-spacing: -0.02em">{{k.value}}</span>
+<span class="num" style="font-size: 12px; color: #1F6B3A; font-weight: 600">{{k.delta}}</span>
+</div>
+</sc-for>
+</div>
+
+<div style="display: flex; flex-wrap: wrap; gap: 20px; align-items: stretch">
+<div style="flex: 999 1 520px; min-width: 0; border: 1px solid #E6E6E1; border-radius: 10px; padding: 16px; display: flex; flex-direction: column; gap: 12px">
+<div style="display: flex; flex-wrap: wrap; justify-content: space-between; gap: 8px">
+<h2 style="margin: 0; font-size: 15px; font-weight: 700">Engajamento por dia e horário</h2>
+<span style="font-size: 12px; color: #5E6168">Taxa média dos posts publicados em cada janela (%)</span>
+</div>
+<div style="overflow-x: auto">
+<div style="min-width: 480px; display: grid; grid-template-columns: 44px repeat(6, minmax(0, 1fr)); gap: 3px; font-size: 12px">
+<span></span>
+<sc-for list="{{slots}}" as="sl" hint-placeholder-count="6"><span style="text-align: center; color: #5E6168; padding: 2px 0 6px">{{sl}}</span></sc-for>
+<sc-for list="{{heat}}" as="hr" hint-placeholder-count="7">
+<span style="color: #3A3D44; display: flex; align-items: center">{{hr.day}}</span>
+<sc-for list="{{hr.cells}}" as="hc" hint-placeholder-count="6"><span class="num" style="{{hc.style}}">{{hc.label}}</span></sc-for>
+</sc-for>
+</div>
+</div>
+</div>
+<div style="flex: 1 1 280px; border: 1px solid #E6E6E1; border-radius: 10px; padding: 16px; display: flex; flex-direction: column; gap: 12px">
+<h2 style="margin: 0; font-size: 15px; font-weight: 700">Por formato</h2>
+<sc-for list="{{formatBars}}" as="fb" hint-placeholder-count="3">
+<div style="display: flex; flex-direction: column; gap: 6px">
+<div style="display: flex; justify-content: space-between; font-size: 13px"><span>{{fb.label}}</span><span class="num" style="font-weight: 600">{{fb.value}}</span></div>
+<div style="height: 6px; border-radius: 999px; background: #F1F1EE; overflow: hidden"><div style="{{fb.bar}}"></div></div>
+</div>
+</sc-for>
+<h2 style="margin: 10px 0 0; font-size: 15px; font-weight: 700">Público por idade</h2>
+<sc-for list="{{ageBars}}" as="ab" hint-placeholder-count="5">
+<div style="display: grid; grid-template-columns: 48px 1fr 36px; gap: 8px; align-items: center; font-size: 12px">
+<span style="color: #3A3D44">{{ab.label}}</span>
+<div style="height: 6px; border-radius: 999px; background: #F1F1EE; overflow: hidden"><div style="{{ab.bar}}"></div></div>
+<span class="num" style="text-align: right">{{ab.value}}</span>
+</div>
+</sc-for>
+<span style="font-size: 12px; color: #5E6168">{{cities}}</span>
+</div>
+</div>
+
+<div style="border: 1px solid #E6E6E1; border-radius: 10px">
+<div style="padding: 14px 16px; border-bottom: 1px solid #E6E6E1"><h2 style="margin: 0; font-size: 15px; font-weight: 700">O que a análise encontrou</h2></div>
+<sc-for list="{{advice}}" as="ad" hint-placeholder-count="4">
+<div style="display: flex; flex-wrap: wrap; gap: 16px; align-items: center; justify-content: space-between; padding: 14px 16px; border-bottom: 1px solid #F0F0EC">
+<div style="display: flex; gap: 14px; flex: 1 1 420px; min-width: 0">
+<span class="num" style="flex: 0 0 auto; width: 24px; height: 24px; border-radius: 6px; background: #EEF1E4; color: #3D4D1C; font-size: 12px; font-weight: 700; display: flex; align-items: center; justify-content: center">{{ad.n}}</span>
+<div style="display: flex; flex-direction: column; gap: 2px; min-width: 0">
+<span style="font-weight: 600">{{ad.title}}</span>
+<span style="font-size: 13px; color: #5E6168">{{ad.body}}</span>
+</div>
+</div>
+<sc-if value="{{ad.hasAction}}" hint-placeholder-val="{{ true }}">
+<button class="btn" style="{{ad.btnStyle}}" onClick="{{ad.act}}">{{ad.actLabel}}</button>
+</sc-if>
+</div>
+</sc-for>
+</div>
+
+<div style="border: 1px solid #E6E6E1; border-radius: 10px">
+<div style="padding: 14px 16px; border-bottom: 1px solid #E6E6E1"><h2 style="margin: 0; font-size: 15px; font-weight: 700">Publicações com melhor desempenho</h2></div>
+<div style="overflow-x: auto">
+<table style="width: 100%; min-width: 680px; border-collapse: collapse; font-size: 13px">
+<thead><tr><th>Publicação</th><th>Formato</th><th>Publicado</th><th style="text-align: right">Curtidas</th><th style="text-align: right">Comentários</th><th style="text-align: right">Visitas ao perfil</th><th style="text-align: right">Engajamento</th></tr></thead>
+<tbody>
+<sc-for list="{{topPosts}}" as="tp" hint-placeholder-count="5">
+<tr class="row-hover">
+<td style="font-weight: 600">{{tp.title}}</td>
+<td style="color: #3A3D44">{{tp.format}}</td>
+<td class="num" style="color: #3A3D44">{{tp.when}}</td>
+<td class="num" style="text-align: right">{{tp.likes}}</td>
+<td class="num" style="text-align: right">{{tp.comments}}</td>
+<td class="num" style="text-align: right">{{tp.visits}}</td>
+<td class="num" style="text-align: right; font-weight: 600">{{tp.rate}}</td>
+</tr>
+</sc-for>
+</tbody>
+</table>
+</div>
+</div>
+</section>
+</sc-if>
+
+<sc-if value="{{isAI}}" hint-placeholder-val="{{ false }}">
+<section aria-label="Integrações de IA" style="display: flex; flex-direction: column; gap: 20px">
+<div style="border: 1px solid #E6E6E1; border-radius: 10px">
+<div style="padding: 14px 16px; border-bottom: 1px solid #E6E6E1"><h2 style="margin: 0; font-size: 15px; font-weight: 700">Padrões de {{tenantName}}</h2></div>
+<div style="display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 12px; padding: 14px 16px; border-bottom: 1px solid #F0F0EC">
+<div style="display: flex; flex-direction: column; flex: 1 1 260px"><span style="font-weight: 600">Quem paga o consumo</span><span style="font-size: 13px; color: #5E6168">{{billHint}}</span></div>
+<div class="seg" role="group" aria-label="Cobrança de IA"><button style="{{billA}}" onClick="{{setBillPlatform}}">Créditos da plataforma</button><button style="{{billB}}" onClick="{{setBillOwn}}">Chaves do cliente</button></div>
+</div>
+<sc-for list="{{defaults}}" as="d" hint-placeholder-count="3">
+<div style="display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 12px; padding: 14px 16px; border-bottom: 1px solid #F0F0EC">
+<span style="font-weight: 600; flex: 1 1 200px">{{d.label}}</span>
+<div class="seg" role="group" aria-label="{{d.label}}">
+<sc-for list="{{d.options}}" as="o" hint-placeholder-count="3"><button style="{{o.style}}" onClick="{{o.pick}}">{{o.label}}</button></sc-for>
+</div>
+</div>
+</sc-for>
+</div>
+<div style="border: 1px solid #E6E6E1; border-radius: 10px">
+<div style="padding: 14px 16px; border-bottom: 1px solid #E6E6E1"><h2 style="margin: 0; font-size: 15px; font-weight: 700">Provedores</h2></div>
+<sc-for list="{{providers}}" as="pv" hint-placeholder-count="5">
+<div class="row-hover" style="display: flex; flex-wrap: wrap; align-items: center; gap: 14px; padding: 14px 16px; border-bottom: 1px solid #F0F0EC">
+<span aria-hidden="true" style="width: 36px; height: 36px; border-radius: 8px; border: 1px solid #E6E6E1; background: #FFFFFF; font-size: 13px; font-weight: 700; display: flex; align-items: center; justify-content: center">{{pv.mono}}</span>
+<div style="display: flex; flex-direction: column; flex: 1 1 300px; min-width: 0">
+<span style="font-weight: 600">{{pv.name}}</span>
+<span style="font-size: 13px; color: #5E6168">{{pv.desc}}</span>
+<span style="font-size: 12px; color: #3A3D44; margin-top: 2px">{{pv.uses}}</span>
+</div>
+<span style="{{pv.badge}}"><span style="{{pv.dot}}"></span>{{pv.statusLabel}}</span>
+<button class="btn" onClick="{{pv.toggle}}">{{pv.toggleLabel}}</button>
+</div>
+</sc-for>
+</div>
+</section>
+</sc-if>
+
+<sc-if value="{{isTeam}}" hint-placeholder-val="{{ false }}">
+<section aria-labelledby="h-team" style="display: flex; flex-direction: column; gap: 20px">
+<div style="border: 1px solid #E6E6E1; border-radius: 10px">
+<div style="display: flex; flex-wrap: wrap; justify-content: space-between; align-items: flex-end; gap: 12px; padding: 14px 16px; border-bottom: 1px solid #E6E6E1">
+<h2 id="h-team" style="margin: 0; font-size: 15px; font-weight: 700">Pessoas em {{tenantName}}</h2>
+<div style="display: flex; flex-wrap: wrap; gap: 8px; align-items: flex-end">
+<label class="field" for="f-invite" style="min-width: 240px">E-mail
+<input id="f-invite" type="email" value="{{inviteEmail}}" onChange="{{onInvite}}">
+</label>
+<button class="btn btn-primary" onClick="{{invite}}">Convidar</button>
+</div>
+</div>
+<div style="overflow-x: auto">
+<table style="width: 100%; min-width: 600px; border-collapse: collapse">
+<thead><tr><th>Pessoa</th><th>Papel</th><th>O que pode fazer</th></tr></thead>
+<tbody>
+<sc-for list="{{teamRows}}" as="tm" hint-placeholder-count="2">
+<tr class="row-hover">
+<td><div style="display: flex; flex-direction: column"><span style="font-weight: 600">{{tm.name}}</span><span style="font-size: 12px; color: #5E6168">{{tm.email}}</span></div></td>
+<td><select value="{{tm.role}}" onChange="{{tm.setRole}}" aria-label="Papel de {{tm.name}}" style="min-height: 36px; padding: 0 10px; border: 1px solid #D4D4CE; border-radius: 8px; background: #FFFFFF; font-weight: 500">
+<option value="admin">Administrador</option>
+<option value="editor">Editor</option>
+<option value="approver">Aprovador</option>
+<option value="viewer">Visualizador</option>
+</select></td>
+<td style="font-size: 13px; color: #5E6168; max-width: 420px">{{tm.roleDesc}}</td>
+</tr>
+</sc-for>
+</tbody>
+</table>
+</div>
+</div>
+</section>
+</sc-if>
+
+<sc-if value="{{isAdmin}}" hint-placeholder-val="{{ false }}">
+<section aria-labelledby="h-admin" style="display: flex; flex-direction: column; gap: 20px">
+<div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); border: 1px solid #E6E6E1; border-radius: 10px; overflow: hidden">
+<sc-for list="{{adminKpis}}" as="ak" hint-placeholder-count="4">
+<div style="padding: 14px 16px; border-right: 1px solid #E6E6E1; margin-right: -1px; display: flex; flex-direction: column; gap: 2px">
+<span style="font-size: 12px; color: #5E6168">{{ak.label}}</span>
+<span class="num" style="font-size: 22px; font-weight: 700; letter-spacing: -0.02em">{{ak.value}}</span>
+</div>
+</sc-for>
+</div>
+<div style="border: 1px solid #E6E6E1; border-radius: 10px">
+<div style="display: flex; flex-wrap: wrap; justify-content: space-between; align-items: flex-end; gap: 12px; padding: 14px 16px; border-bottom: 1px solid #E6E6E1">
+<h2 id="h-admin" style="margin: 0; font-size: 15px; font-weight: 700">Clientes</h2>
+<div style="display: flex; flex-wrap: wrap; gap: 8px; align-items: flex-end">
+<label class="field" for="f-newtenant" style="min-width: 220px">Nome do cliente
+<input id="f-newtenant" type="text" value="{{newTenantName}}" onChange="{{onNewTenant}}">
+</label>
+<label class="field" for="f-newplan">Plano
+<select id="f-newplan" value="{{newTenantPlan}}" onChange="{{onNewPlan}}">
+<option value="Essencial">Essencial</option>
+<option value="Profissional">Profissional</option>
+<option value="Agência">Agência</option>
+</select>
+</label>
+<button class="btn btn-primary" onClick="{{createTenant}}">Criar cliente</button>
+</div>
+</div>
+<div style="overflow-x: auto">
+<table style="width: 100%; min-width: 820px; border-collapse: collapse; font-size: 13px">
+<thead><tr><th>Cliente</th><th>Plano</th><th style="text-align: right">Contas</th><th style="text-align: right">Pessoas</th><th style="text-align: right">Posts em dez.</th><th>Consumo de IA</th><th>Status</th><th><span style="position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0)">Ações</span></th></tr></thead>
+<tbody>
+<sc-for list="{{tenantRows}}" as="tr" hint-placeholder-count="3">
+<tr class="row-hover">
+<td style="font-weight: 600">{{tr.name}}</td>
+<td style="color: #3A3D44">{{tr.plan}}</td>
+<td class="num" style="text-align: right">{{tr.accounts}}</td>
+<td class="num" style="text-align: right">{{tr.users}}</td>
+<td class="num" style="text-align: right">{{tr.posts}}</td>
+<td style="color: #3A3D44">{{tr.billing}}</td>
+<td><span style="{{tr.badge}}"><span style="{{tr.dot}}"></span>{{tr.statusLabel}}</span></td>
+<td style="text-align: right; white-space: nowrap"><button class="btn btn-sm" onClick="{{tr.enter}}">Acessar</button> <button class="btn btn-sm" onClick="{{tr.toggle}}">{{tr.toggleLabel}}</button></td>
+</tr>
+</sc-for>
+</tbody>
+</table>
+</div>
+</div>
+<div style="border: 1px solid #E6E6E1; border-radius: 10px; padding: 16px; display: flex; flex-direction: column; gap: 6px; max-width: 860px">
+<h2 style="margin: 0; font-size: 15px; font-weight: 700">Como os clientes ficam separados</h2>
+<p style="margin: 0; font-size: 13px; color: #5E6168">Toda tabela carrega tenant_id com Row Level Security no Supabase. Tokens da Meta e chaves de IA ficam criptografados por cliente, os criativos em pastas próprias no Storage, e as filas de geração e publicação são separadas para que um cliente não atrase o outro.</p>
+</div>
+</section>
+</sc-if>
+
+</div>
+</main>
+
+<sc-if value="{{hasSel}}" hint-placeholder-val="{{ false }}">
+<div class="backdrop" style="position: fixed; inset: 0; background: rgba(22,24,29,0.32); z-index: 50; display: flex; justify-content: flex-end">
+<div class="drawer" role="dialog" aria-modal="true" aria-label="Detalhes da publicação" style="width: 460px; max-width: 100%; height: 100%; background: #FFFFFF; border-left: 1px solid #E6E6E1; overflow-y: auto; box-sizing: border-box; display: flex; flex-direction: column">
+<div style="display: flex; justify-content: space-between; align-items: center; padding: 14px 18px; border-bottom: 1px solid #E6E6E1">
+<span style="{{sel.badgeStyle}}"><span style="{{sel.dotStyle}}"></span>{{sel.statusLabel}}</span>
+<button class="btn btn-sm" aria-label="Fechar" onClick="{{closeSel}}" style="min-width: 36px; padding: 0">
+<svg aria-hidden="true" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M6 6l12 12M18 6L6 18"></path></svg>
+</button>
+</div>
+<div style="padding: 18px; display: flex; flex-direction: column; gap: 16px; flex: 1">
+<div style="border: 1px solid #E6E6E1; border-radius: 12px; overflow: hidden">
+<div style="display: flex; align-items: center; gap: 10px; padding: 10px 12px">
+<span aria-hidden="true" style="{{sel.avatar}}">{{sel.initial}}</span>
+<span style="font-weight: 600; font-size: 13px">{{sel.handle}}</span>
+</div>
+<div style="{{sel.media}}">
+<span style="font-size: 12px; font-weight: 600; color: rgba(255,255,255,0.8)">{{sel.handle}}</span>
+<span style="font-weight: 700; font-size: 26px; line-height: 1.12; letter-spacing: -0.02em; color: #FFFFFF; text-wrap: balance">{{sel.theme}}</span>
+<span style="font-size: 12px; color: rgba(255,255,255,0.8)">{{sel.previewNote}}</span>
+</div>
+<p style="margin: 0; padding: 12px; font-size: 13px; line-height: 1.55; white-space: pre-line; color: #3A3D44"><strong style="color: #16181D">{{sel.handle}}</strong> {{sel.captionText}}</p>
+</div>
+<dl style="margin: 0; display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; font-size: 13px">
+<div><dt style="color: #5E6168">Data e horário</dt><dd class="num" style="margin: 0; font-weight: 600">{{sel.dateLabel}}</dd></div>
+<div><dt style="color: #5E6168">Formato</dt><dd style="margin: 0; font-weight: 600">{{sel.format}}</dd></div>
+<div><dt style="color: #5E6168">Origem</dt><dd style="margin: 0; font-weight: 600">{{sel.originLabel}}</dd></div>
+<div><dt style="color: #5E6168">Conta</dt><dd style="margin: 0; font-weight: 600">{{sel.modeLabel}}</dd></div>
+</dl>
+</div>
+<div style="display: flex; gap: 8px; flex-wrap: wrap; padding: 14px 18px; border-top: 1px solid #E6E6E1; position: sticky; bottom: 0; background: #FFFFFF">
+<sc-if value="{{sel.canApprove}}" hint-placeholder-val="{{ false }}">
+<button class="btn btn-primary" onClick="{{sel.approve}}">Aprovar</button>
+<button class="btn btn-danger" onClick="{{sel.reject}}">Reprovar</button>
+</sc-if>
+<sc-if value="{{sel.canGenerate}}" hint-placeholder-val="{{ false }}">
+<button class="btn btn-primary" onClick="{{sel.regen}}">Gerar agora</button>
+</sc-if>
+<sc-if value="{{sel.canRegen}}" hint-placeholder-val="{{ false }}">
+<button class="btn" onClick="{{sel.regen}}">Gerar de novo</button>
+</sc-if>
+<sc-if value="{{sel.canPublish}}" hint-placeholder-val="{{ false }}">
+<button class="btn btn-primary" onClick="{{sel.publish}}">Publicar agora</button>
+</sc-if>
+<sc-if value="{{sel.isGenerating}}" hint-placeholder-val="{{ false }}">
+<span class="pulse" style="font-size: 13px; color: #1E4FA8; font-weight: 600; display: inline-flex; align-items: center; min-height: 40px">Gerando legenda e criativo…</span>
+</sc-if>
+</div>
+</div>
+</div>
+</sc-if>
+
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":1440,"height":1100}}'>
+var ST = {
+  planejado: { label: 'Planejado', bg: '#F1F1EE', fg: '#3A3D44', dot: '#9A9DA3' },
+  gerando: { label: 'Gerando', bg: '#EAF0FB', fg: '#1E4FA8', dot: '#3B6FD1' },
+  aguardando: { label: 'Aguardando aprovação', bg: '#FDF3DC', fg: '#7A4F00', dot: '#D79A16' },
+  agendado: { label: 'Agendado', bg: '#E7F4EA', fg: '#1F6B3A', dot: '#2E8B57' },
+  reprovado: { label: 'Reprovado', bg: '#FBE9E7', fg: '#A3261A', dot: '#D2493A' },
+  publicado: { label: 'Publicado', bg: '#ECECE8', fg: '#16181D', dot: '#16181D' }
+};
+var WD = ['Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb', 'Dom'];
+var COLORS = ['#4A5D23', '#2B5C8A', '#9A5B1E', '#2F6E6A', '#8C3B4A', '#5A5F2A'];
+var PROV = { chatgpt: 'ChatGPT', gemini: 'Gemini', nanobanana: 'Nano Banana', higgsfield: 'Higgsfield', canva: 'Canva' };
+var HEAT = [
+  [1.8, 2.4, 3.1, 2.2, 4.0, 3.2],
+  [2.0, 2.6, 3.4, 2.5, 5.1, 3.6],
+  [1.7, 2.3, 3.0, 2.1, 4.2, 3.3],
+  [2.1, 2.7, 3.6, 2.6, 5.4, 3.9],
+  [1.6, 2.1, 2.8, 2.0, 3.5, 2.9],
+  [1.2, 1.9, 2.5, 2.2, 2.8, 2.4],
+  [1.0, 1.6, 2.2, 2.4, 3.1, 3.4]
+];
+var SLOTS = ['07h', '09h', '12h', '15h', '18h', '21h'];
+var ICONS = {
+  cal: ['M7 3v3M17 3v3M4 9h16', 'M5 5h14a1 1 0 0 1 1 1v13a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1V6a1 1 0 0 1 1-1z', ''],
+  plan: ['M4 6h11M4 11h11M4 16h6', 'M14 20l.8-3.2 5-5 2.4 2.4-5 5z', ''],
+  approve: ['M12 21a9 9 0 1 0 0-18 9 9 0 0 0 0 18z', 'M8 12.5l2.7 2.7L16.2 9.6', ''],
+  upload: ['M4 5h16v14H4z', 'M4 16l5-5 4 4 2-2 5 5', 'M15.5 9h.01'],
+  insights: ['M5 20V11', 'M12 20V4', 'M19 20v-8'],
+  accounts: ['M16 12a4 4 0 1 1-8 0 4 4 0 0 1 8 0z', 'M16 12v1.5a2.5 2.5 0 0 0 5 0V12a9 9 0 1 0-3.6 7.2', ''],
+  ai: ['M9 3v5M15 3v5', 'M7 8h10v3a5 5 0 0 1-10 0z', 'M12 16v5'],
+  team: ['M9 11a3.5 3.5 0 1 0 0-7 3.5 3.5 0 0 0 0 7z', 'M2.5 20a6.5 6.5 0 0 1 13 0', 'M16 4.6a3.5 3.5 0 0 1 0 6.3M21.5 20a6 6 0 0 0-3.4-5.4'],
+  admin: ['M12 3l8 3v6c0 4.5-3.4 8-8 9-4.6-1-8-4.5-8-9V6z', 'M9 12l2 2 4-4', '']
+};
+var ROLES = {
+  admin: ['Administrador', 'Conecta contas, convida pessoas, configura IA e cobrança.'],
+  editor: ['Editor', 'Planeja, gera conteúdo, sobe criativos e agenda.'],
+  approver: ['Aprovador', 'Recebe a fila e aprova ou reprova. Ideal para o cliente final ou o médico responsável.'],
+  viewer: ['Visualizador', 'Consulta calendário e insights.']
+};
+
+function weekdayOf(day) { return WD[day % 7]; }
+function pad(n) { return n < 10 ? '0' + n : '' + n; }
+function makeCaption(p, handle) {
+  var cta = p.format === 'Carrossel' ? 'Arraste para o lado e veja o passo a passo.' : p.format === 'Reels' ? 'Assista até o final e salve para rever.' : 'Salve este post para consultar depois.';
+  var tag = (handle || '').replace('@', '').replace(/_/g, '');
+  return p.theme + '.\n\nNo dia a dia da clínica, pequenos ajustes de gestão mudam o resultado. ' + cta + '\n\nDeixe sua dúvida nos comentários.\n\n#gestaoclinica #saude #' + tag;
+}
+function mix(a, b, t) {
+  var pa = [parseInt(a.slice(1, 3), 16), parseInt(a.slice(3, 5), 16), parseInt(a.slice(5, 7), 16)];
+  var pb = [parseInt(b.slice(1, 3), 16), parseInt(b.slice(3, 5), 16), parseInt(b.slice(5, 7), 16)];
+  return 'rgb(' + pa.map(function (v, i) { return Math.round(v + (pb[i] - v) * t); }).join(',') + ')';
+}
+function seg(active) {
+  return active ? { background: '#FFFFFF', color: '#16181D', boxShadow: '0 1px 2px rgba(22,24,29,0.1), 0 0 0 1px #E6E6E1' } : { background: 'transparent', color: '#5E6168', boxShadow: 'none' };
+}
+function badge(st) {
+  return { display: 'inline-flex', alignItems: 'center', gap: '6px', background: st.bg, color: st.fg, fontSize: '12px', fontWeight: 500, padding: '3px 9px 3px 7px', borderRadius: '999px', whiteSpace: 'nowrap' };
+}
+function dot(c, size) { var s = (size || 6) + 'px'; return { width: s, height: s, borderRadius: '999px', background: c, flex: '0 0 auto', display: 'inline-block' }; }
+function avatar(c, size) { var s = (size || 30) + 'px'; return { width: s, height: s, borderRadius: '999px', background: c, color: '#FFFFFF', fontSize: '12px', fontWeight: 700, display: 'inline-flex', alignItems: 'center', justifyContent: 'center', flex: '0 0 auto' }; }
+function media(c, format) {
+  return { background: c, aspectRatio: format === 'Reels' || format === 'Stories' ? '4 / 5' : '1 / 1', padding: '20px', boxSizing: 'border-box', display: 'flex', flexDirection: 'column', justifyContent: 'space-between', gap: '12px' };
+}
+function fmt(n) { return Math.round(n).toLocaleString('pt-BR'); }
+function newCfg() {
+  return {
+    defaults: { caption: 'chatgpt', image: 'nanobanana', video: 'higgsfield' },
+    connected: { chatgpt: true, gemini: true, nanobanana: true, higgsfield: true, canva: false },
+    billing: 'platform'
+  };
+}
+
+function initialState() {
+  var posts = [
+    { id: 1, acc: 'a1', day: 2, time: '18:00', theme: 'IA na gestão de clínicas: 3 indicadores para acompanhar', format: 'Carrossel', status: 'agendado', origin: 'IA', provider: 'nanobanana' },
+    { id: 2, acc: 'a1', day: 4, time: '12:00', theme: 'Bastidores da nova sala da Visus', format: 'Reels', status: 'aguardando', origin: 'IA', provider: 'higgsfield' },
+    { id: 3, acc: 'a2', day: 3, time: '09:00', theme: 'Cuidados no pós-operatório', format: 'Foto', status: 'aguardando', origin: 'IA', provider: 'chatgpt' },
+    { id: 4, acc: 'a1', day: 9, time: '18:00', theme: 'Repasse médico sem planilha', format: 'Carrossel', status: 'planejado', origin: 'IA', provider: null },
+    { id: 5, acc: 'a3', day: 7, time: '19:00', theme: 'Mitos sobre exames de imagem', format: 'Reels', status: 'planejado', origin: 'IA', provider: null },
+    { id: 6, acc: 'a1', day: 11, time: '12:00', theme: 'Como reduzir faltas com lembretes no WhatsApp', format: 'Carrossel', status: 'aguardando', origin: 'IA', provider: 'gemini' },
+    { id: 7, acc: 'a2', day: 10, time: '18:00', theme: 'Horário de fim de ano da clínica', format: 'Foto', status: 'agendado', origin: 'Upload', provider: null },
+    { id: 8, acc: 'a1', day: 16, time: '18:00', theme: 'Checklist LGPD para clínicas', format: 'Carrossel', status: 'planejado', origin: 'IA', provider: null },
+    { id: 9, acc: 'a3', day: 14, time: '12:00', theme: 'Quando pedir uma ressonância', format: 'Foto', status: 'reprovado', origin: 'IA', provider: 'gemini' },
+    { id: 10, acc: 'a1', day: 18, time: '12:00', theme: 'Visus Pulse: CRM feito para a saúde', format: 'Foto', status: 'planejado', origin: 'IA', provider: null },
+    { id: 11, acc: 'a2', day: 17, time: '09:00', theme: 'Conheça a equipe de enfermagem', format: 'Reels', status: 'planejado', origin: 'IA', provider: null },
+    { id: 12, acc: 'a1', day: 23, time: '18:00', theme: 'Retrospectiva 2026', format: 'Carrossel', status: 'planejado', origin: 'IA', provider: null },
+    { id: 13, acc: 'a1', day: 30, time: '12:00', theme: 'Metas 2027 para gestores de clínica', format: 'Foto', status: 'planejado', origin: 'IA', provider: null },
+    { id: 50, acc: 'a4', day: 5, time: '18:00', theme: 'Lançamento da coleção de verão', format: 'Reels', status: 'aguardando', origin: 'IA', provider: 'higgsfield' },
+    { id: 51, acc: 'a4', day: 12, time: '12:00', theme: 'Bastidores da produção', format: 'Carrossel', status: 'planejado', origin: 'IA', provider: null },
+    { id: 52, acc: 'a5', day: 8, time: '19:00', theme: 'Promoção de fim de ano', format: 'Foto', status: 'agendado', origin: 'Upload', provider: null },
+    { id: 53, acc: 'a5', day: 19, time: '18:00', theme: 'Perguntas frequentes dos clientes', format: 'Carrossel', status: 'planejado', origin: 'IA', provider: null }
+  ];
+  var accounts = [
+    { id: 'a1', tenant: 't1', handle: '@visus_ai', name: 'Visus AI', approval: true, color: COLORS[0] },
+    { id: 'a2', tenant: 't2', handle: '@clinica_aurora', name: 'Clínica Aurora', approval: false, color: COLORS[1] },
+    { id: 'a3', tenant: 't2', handle: '@dra_exemplo', name: 'Dra. Exemplo', approval: true, color: COLORS[2] },
+    { id: 'a4', tenant: 't3', handle: '@cliente_alfa', name: 'Cliente Alfa', approval: true, color: COLORS[3] },
+    { id: 'a5', tenant: 't3', handle: '@cliente_beta', name: 'Cliente Beta', approval: true, color: COLORS[4] }
+  ];
+  posts.forEach(function (p) {
+    if (p.status !== 'planejado') {
+      var a = accounts.filter(function (x) { return x.id === p.acc; })[0];
+      p.caption = makeCaption(p, a.handle);
+    }
+  });
+  var tenants = [
+    { id: 't1', name: 'Visus', plan: 'Agência', active: true },
+    { id: 't2', name: 'Clínica Aurora', plan: 'Profissional', active: true },
+    { id: 't3', name: 'Agência Exemplo', plan: 'Agência', active: true }
+  ];
+  var users = [
+    { id: 'u1', tenant: 't1', name: 'Administrador Visus', email: 'admin@visus.example', role: 'admin' },
+    { id: 'u2', tenant: 't1', name: 'Social media', email: 'social@visus.example', role: 'editor' },
+    { id: 'u3', tenant: 't2', name: 'Gestora da clínica', email: 'gestao@aurora.example', role: 'admin' },
+    { id: 'u4', tenant: 't2', name: 'Diretor médico', email: 'diretoria@aurora.example', role: 'approver' },
+    { id: 'u5', tenant: 't3', name: 'Dono da agência', email: 'contato@agencia.example', role: 'admin' },
+    { id: 'u6', tenant: 't3', name: 'Cliente Alfa', email: 'marketing@alfa.example', role: 'approver' }
+  ];
+  var cfg = {};
+  tenants.forEach(function (t) { cfg[t.id] = newCfg(); });
+  cfg.t2.billing = 'own';
+  return {
+    screen: 'cal', posts: posts, accounts: accounts, nextId: 100, selId: null,
+    tenants: tenants, users: users, cfg: cfg, tenant: 't1',
+    inviteEmail: '', newTenantName: '', newTenantPlan: 'Profissional',
+    filterAcc: 'all', planAcc: 'a1', insAcc: 'a1',
+    draft: { day: 21, time: '18:00', format: 'Carrossel', theme: '' },
+    uploads: [{ id: 'up1', tenant: 't1', name: 'campanha-dezembro.mp4', ext: 'MP4', info: 'Vídeo · 24 MB', done: false }],
+    applied: {}
+  };
+}
+
+class Component extends DCLogic {
+  constructor(props) { super(props); this.state = initialState(); }
+
+  patchPost(id, fn) {
+    this.setState(function (s) { return { posts: s.posts.map(function (p) { return p.id === id ? Object.assign({}, p, fn(p)) : p; }) }; });
+  }
+  providerFor(format) {
+    var d = this.state.cfg[this.state.tenant].defaults;
+    return (format === 'Reels' || format === 'Stories') ? d.video : d.image;
+  }
+  generate(ids) {
+    var self = this;
+    this.setState(function (s) {
+      return { posts: s.posts.map(function (p) { return ids.indexOf(p.id) >= 0 ? Object.assign({}, p, { status: 'gerando' }) : p; }) };
+    });
+    setTimeout(function () {
+      self.setState(function (s) {
+        return {
+          posts: s.posts.map(function (p) {
+            if (ids.indexOf(p.id) < 0) return p;
+            var a = s.accounts.filter(function (x) { return x.id === p.acc; })[0];
+            return Object.assign({}, p, { status: a.approval ? 'aguardando' : 'agendado', caption: makeCaption(p, a.handle), provider: self.providerFor(p.format) });
+          })
+        };
+      });
+    }, 1600);
+  }
+  setMode(accId, approval) {
+    this.setState(function (s) { return { accounts: s.accounts.map(function (a) { return a.id === accId ? Object.assign({}, a, { approval: approval }) : a; }) }; });
+  }
+
+  renderVals() {
+    var self = this;
+    var s = this.state;
+    var tenantObj = s.tenants.filter(function (t) { return t.id === s.tenant; })[0] || s.tenants[0];
+    var tcfg = s.cfg[tenantObj.id];
+    var setCfg = function (fn) { self.setState(function (st) { var c = Object.assign({}, st.cfg); c[st.tenant] = Object.assign({}, c[st.tenant], fn(c[st.tenant])); return { cfg: c }; }); };
+    var tAccounts = s.accounts.filter(function (a) { return a.tenant === tenantObj.id; });
+    var accMap = {};
+    tAccounts.forEach(function (a) { accMap[a.id] = a; });
+    var tPosts = s.posts.filter(function (p) { return !!accMap[p.acc]; });
+    var NOACC = { id: null, handle: 'nenhuma conta', approval: true, color: '#9A9DA3' };
+    var switchTenant = function (tid, screen) {
+      var first = s.accounts.filter(function (a) { return a.tenant === tid; })[0];
+      var patch = { tenant: tid, selId: null, filterAcc: 'all', planAcc: first ? first.id : null, insAcc: first ? first.id : null };
+      if (screen) patch.screen = screen;
+      self.setState(patch);
+    };
+
+    function deco(p) {
+      var a = accMap[p.acc] || NOACC;
+      var st = ST[p.status];
+      return Object.assign({}, p, {
+        handle: a.handle, initial: a.handle.charAt(1).toUpperCase(),
+        avatar: avatar(a.color, 30), media: media(a.color, p.format),
+        statusLabel: st.label, badgeStyle: badge(st), dotStyle: dot(st.dot),
+        dateLabel: weekdayOf(p.day) + ', ' + pad(p.day) + ' dez · ' + p.time,
+        providerLabel: p.origin === 'Upload' ? 'Criativo próprio' : (p.provider ? PROV[p.provider] : '—'),
+        open: function () { self.setState({ selId: p.id }); },
+        approve: function () { self.patchPost(p.id, function () { return { status: 'agendado' }; }); },
+        reject: function () { self.patchPost(p.id, function () { return { status: 'reprovado' }; }); },
+        regen: function () { self.generate([p.id]); },
+        publish: function () { self.patchPost(p.id, function () { return { status: 'publicado' }; }); }
+      });
+    }
+    var all = tPosts.slice().sort(function (a, b) { return a.day - b.day || a.time.localeCompare(b.time); }).map(deco);
+    var pendingList = all.filter(function (p) { return p.status === 'aguardando'; });
+
+    var go = function (k) { return function () { self.setState({ screen: k, selId: null }); }; };
+    var labels = { cal: 'Calendário', plan: 'Planejamento', approve: 'Aprovações', upload: 'Criativos prontos', insights: 'Insights', accounts: 'Contas do Instagram', ai: 'Integrações de IA', team: 'Equipe', admin: 'Clientes' };
+    var groups = [['Conteúdo', ['cal', 'plan', 'approve', 'upload']], ['Análise', ['insights']], ['Configurações', ['accounts', 'ai', 'team']], ['Plataforma', ['admin']]];
+    var navGroups = groups.map(function (g) {
+      return {
+        label: g[0],
+        items: g[1].map(function (k) {
+          var active = s.screen === k;
+          return {
+            label: labels[k], go: go(k), current: active ? 'page' : 'false',
+            d1: ICONS[k][0], d2: ICONS[k][1], d3: ICONS[k][2],
+            style: active ? { background: '#FFFFFF', color: '#16181D', fontWeight: 600, boxShadow: '0 1px 2px rgba(22,24,29,0.08), 0 0 0 1px #E6E6E1' } : { background: 'transparent', color: '#3A3D44' },
+            hasBadge: k === 'approve' && pendingList.length > 0, badge: pendingList.length
+          };
+        })
+      };
+    });
+
+    var titles = {
+      cal: ['Calendário', 'Tudo o que vai ao ar em ' + tenantObj.name + ', por conta e por status.'],
+      plan: ['Planejamento', 'Dia, horário e tema. A IA escreve a legenda e cria a arte ou o vídeo.'],
+      approve: ['Aprovações', 'Confira legenda e criativo antes de ir para o Instagram.'],
+      upload: ['Criativos prontos', 'Fotos, vídeos e artes já finalizadas, prontos para agendar.'],
+      accounts: ['Contas do Instagram', 'Conecte quantas contas precisar e defina se cada uma pede aprovação.'],
+      insights: ['Insights', 'Curtidas, comentários e visitas ao perfil cruzados com horário, formato e público.'],
+      ai: ['Integrações de IA', 'Quais IAs escrevem e criam para este cliente, e quem paga o consumo.'],
+      team: ['Equipe', 'Quem acessa ' + tenantObj.name + ' e o que cada pessoa pode fazer.'],
+      admin: ['Clientes', 'Todos os clientes da plataforma, com plano, uso e status.']
+    };
+
+    var filtered = all.filter(function (p) { return s.filterAcc === 'all' || p.acc === s.filterAcc; });
+    var cellBase = { minHeight: '112px', padding: '6px', boxSizing: 'border-box', display: 'flex', flexDirection: 'column', gap: '4px', borderRight: '1px solid #F0F0EC', borderBottom: '1px solid #F0F0EC' };
+    var blank = { label: '', chips: [], numStyle: {}, style: Object.assign({}, cellBase, { background: '#FAFAF8' }) };
+    var cells = [blank];
+    for (var d = 1; d <= 31; d++) {
+      var dayPosts = filtered.filter(function (p) { return p.day === d; });
+      cells.push({
+        label: d,
+        style: Object.assign({}, cellBase, { background: '#FFFFFF' }),
+        numStyle: { fontSize: '12px', fontWeight: 600, color: '#5E6168', padding: '2px 4px' },
+        chips: dayPosts.map(function (p) {
+          var st = ST[p.status];
+          var a = accMap[p.acc];
+          return { time: p.time, theme: p.theme, accDot: dot(a.color, 7), stDot: dot(st.dot, 6), open: p.open, aria: p.time + ', ' + p.handle + ', ' + p.theme + ', ' + st.label };
+        })
+      });
+    }
+    while (cells.length % 7 !== 0) cells.push(blank);
+
+    var accFilters = [{ id: 'all', label: 'Todas' }].concat(tAccounts.map(function (a) { return { id: a.id, label: a.handle }; })).map(function (f) {
+      return { label: f.label, style: seg(s.filterAcc === f.id), pressed: s.filterAcc === f.id ? 'true' : 'false', pick: function () { self.setState({ filterAcc: f.id }); } };
+    });
+    var legend = Object.keys(ST).map(function (k) { return { label: ST[k].label, dot: dot(ST[k].dot, 7) }; });
+
+    var planAccObj = accMap[s.planAcc] || tAccounts[0] || NOACC;
+    var planRows = all.filter(function (p) { return p.acc === planAccObj.id; });
+    var planPendingIds = planRows.filter(function (p) { return p.status === 'planejado' || p.status === 'reprovado'; }).map(function (p) { return p.id; });
+    var setDraft = function (k, num) {
+      return function (e) { var v = e.target.value; self.setState(function (st) { var dr = Object.assign({}, st.draft); dr[k] = num ? Math.max(1, Math.min(31, parseInt(v || '1', 10))) : v; return { draft: dr }; }); };
+    };
+
+    var uploads = s.uploads.filter(function (u) { return u.tenant === tenantObj.id; }).map(function (u) {
+      return Object.assign({}, u, {
+        pending: !u.done, doneLabel: u.doneLabel || '',
+        schedule: function () {
+          var a = planAccObj;
+          if (!a.id) return;
+          var id = s.nextId;
+          var p = { id: id, acc: a.id, day: 21, time: '18:00', theme: u.name.replace(/\.[^.]+$/, '').replace(/[-_]/g, ' '), format: u.ext === 'MP4' || u.ext === 'MOV' ? 'Reels' : 'Foto', origin: 'Upload', provider: null };
+          p.caption = makeCaption(p, a.handle);
+          p.status = a.approval ? 'aguardando' : 'agendado';
+          self.setState(function (st) {
+            return {
+              nextId: st.nextId + 1, posts: st.posts.concat([p]),
+              uploads: st.uploads.map(function (x) { return x.id === u.id ? Object.assign({}, x, { done: true, doneLabel: (a.approval ? 'Na fila de aprovação' : 'Agendado') + ' · ' + a.handle + ' · 21 dez, 18:00' }) : x; })
+            };
+          });
+        }
+      });
+    });
+
+    var accountCards = tAccounts.map(function (a) {
+      return {
+        handle: a.handle, name: a.name, initial: a.handle.charAt(1).toUpperCase(), avatar: avatar(a.color, 32),
+        count: s.posts.filter(function (p) { return p.acc === a.id; }).length,
+        modeA: seg(a.approval), modeB: seg(!a.approval),
+        setApprove: function () { self.setMode(a.id, true); }, setDirect: function () { self.setMode(a.id, false); }
+      };
+    });
+
+    var insAccObj = accMap[s.insAcc] || tAccounts[0] || NOACC;
+    var insIdx = Math.max(0, s.accounts.findIndex(function (a) { return a.id === insAccObj.id; }));
+    var factor = [1, 0.62, 0.41, 0.83, 0.55][insIdx] || 0.3;
+    var kpis = [
+      { label: 'Curtidas', value: fmt(4812 * factor), delta: '+18%' },
+      { label: 'Comentários', value: fmt(362 * factor), delta: '+9%' },
+      { label: 'Visitas ao perfil', value: fmt(1947 * factor), delta: '+24%' },
+      { label: 'Alcance', value: fmt(38400 * factor), delta: '+12%' },
+      { label: 'Novos seguidores', value: '+' + fmt(214 * factor), delta: '+31%' },
+      { label: 'Engajamento médio', value: '4,1%', delta: '+0,6 p.p.' }
+    ];
+    var heat = HEAT.map(function (row, i) {
+      return {
+        day: WD[i],
+        cells: row.map(function (v) {
+          var t = (v - 1) / 4.4;
+          return { label: v.toFixed(1).replace('.', ','), style: { background: mix('#F4F5EE', '#3D4D1C', t), color: t > 0.52 ? '#FFFFFF' : '#16181D', borderRadius: '4px', minHeight: '36px', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 500 } };
+        })
+      };
+    });
+    var barStyle = function (pct) { return { width: pct + '%', height: '100%', background: '#4A5D23', borderRadius: '999px' }; };
+    var formatBars = [['Reels', 5.2], ['Carrossel', 4.6], ['Foto', 2.4]].map(function (f) { return { label: f[0], value: f[1].toFixed(1).replace('.', ',') + '%', bar: barStyle(f[1] / 5.2 * 100) }; });
+    var ageBars = [['18–24', 9], ['25–34', 31], ['35–44', 34], ['45–54', 18], ['55+', 8]].map(function (f) { return { label: f[0], value: f[1] + '%', bar: barStyle(f[1] / 34 * 100) }; });
+    var topPosts = [
+      ['IA no faturamento de telerradiologia', 'Reels', 'Ter, 18:00', 612, 48, 231, '6,8%'],
+      ['Indicadores de SLA que importam', 'Carrossel', 'Qui, 18:00', 540, 41, 198, '6,1%'],
+      ['Bastidores do time', 'Reels', 'Sáb, 15:00', 388, 22, 96, '4,2%'],
+      ['Agenda inteligente no Vector', 'Carrossel', 'Seg, 12:00', 301, 19, 88, '3,5%'],
+      ['Frase de segunda-feira', 'Foto', 'Seg, 07:00', 142, 4, 12, '1,6%']
+    ].map(function (r) { return { title: r[0], format: r[1], when: r[2], likes: fmt(r[3] * factor), comments: fmt(r[4] * factor), visits: fmt(r[5] * factor), rate: r[6] }; });
+
+    var lunchCount = s.posts.filter(function (p) { return p.acc === insAccObj.id && p.time === '12:00' && p.status !== 'publicado'; }).length;
+    var photoCount = s.posts.filter(function (p) { return p.acc === insAccObj.id && p.format === 'Foto' && p.status === 'planejado'; }).length;
+    var k1 = insAccObj.id + ':time', k2 = insAccObj.id + ':fmt';
+    var doneBtn = { color: '#1F6B3A', borderColor: '#BFDCC8', background: '#F2F9F4' };
+    var advice = [
+      {
+        n: 1, title: 'Terça e quinta às 18h rendem quase o dobro',
+        body: 'Essas janelas ficaram entre 5,1% e 5,4%, contra 2,9% de média. ' + (lunchCount ? lunchCount + ' publicação(ões) de ' + insAccObj.handle + ' estão marcadas para 12h.' : 'Nenhuma publicação marcada para 12h.'),
+        hasAction: lunchCount > 0 || !!s.applied[k1], btnStyle: s.applied[k1] ? doneBtn : {},
+        actLabel: s.applied[k1] ? 'Horários atualizados' : 'Mover para 18h',
+        act: function () { self.setState(function (st) { var ap = Object.assign({}, st.applied); ap[k1] = true; return { applied: ap, posts: st.posts.map(function (p) { return p.acc === insAccObj.id && p.time === '12:00' && p.status !== 'publicado' ? Object.assign({}, p, { time: '18:00' }) : p; }) }; }); }
+      },
+      {
+        n: 2, title: 'Reels alcançam 2,2 vezes mais que fotos',
+        body: photoCount ? photoCount + ' foto(s) planejada(s) ainda podem virar Reels antes da geração.' : 'Não há fotos planejadas aguardando geração.',
+        hasAction: photoCount > 0 || !!s.applied[k2], btnStyle: s.applied[k2] ? doneBtn : {},
+        actLabel: s.applied[k2] ? 'Formatos atualizados' : 'Converter em Reels',
+        act: function () { self.setState(function (st) { var ap = Object.assign({}, st.applied); ap[k2] = true; return { applied: ap, posts: st.posts.map(function (p) { return p.acc === insAccObj.id && p.format === 'Foto' && p.status === 'planejado' ? Object.assign({}, p, { format: 'Reels' }) : p; }) }; }); }
+      },
+      { n: 3, title: '65% do público tem entre 25 e 44 anos', body: 'Concentrado em Curitiba e região. Gestão, indicadores e casos práticos funcionam melhor que conteúdo motivacional.', hasAction: false, btnStyle: {}, actLabel: '', act: null },
+      { n: 4, title: 'Casos com números trazem 3 vezes mais visitas ao perfil', body: 'A IA passa a priorizar esse ângulo ao sugerir os temas do próximo mês.', hasAction: false, btnStyle: {}, actLabel: '', act: null }
+    ];
+
+    var defDefs = [
+      ['caption', 'Legendas', ['chatgpt', 'gemini']],
+      ['image', 'Imagens e artes', ['chatgpt', 'gemini', 'nanobanana', 'canva']],
+      ['video', 'Vídeos para Reels', ['higgsfield', 'gemini']]
+    ];
+    var defaults = defDefs.map(function (dd) {
+      return {
+        label: dd[1],
+        options: dd[2].map(function (o) {
+          return { label: o === 'gemini' && dd[0] === 'video' ? 'Gemini (Veo)' : PROV[o], style: seg(tcfg.defaults[dd[0]] === o), pick: function () { setCfg(function (c) { var df = Object.assign({}, c.defaults); df[dd[0]] = o; return { defaults: df }; }); } };
+        })
+      };
+    });
+    var provDefs = [
+      ['chatgpt', 'ChatGPT', 'CG', 'Legendas, hashtags e roteiros. Imagens pelo gerador da OpenAI.'],
+      ['gemini', 'Gemini', 'GE', 'Legendas e leitura dos insights. Imagens (Imagen) e vídeos curtos (Veo).'],
+      ['nanobanana', 'Nano Banana', 'NB', 'Imagens e edições que mantêm a identidade visual e os produtos.'],
+      ['higgsfield', 'Higgsfield', 'HF', 'Vídeos para Reels com movimento de câmera e efeitos.'],
+      ['canva', 'Canva', 'CV', 'Aplica os modelos da marca (fontes, cores, logo) sobre o que foi gerado.']
+    ];
+    var providers = provDefs.map(function (pd) {
+      var on = !!tcfg.connected[pd[0]];
+      var uses = defDefs.filter(function (dd) { return tcfg.defaults[dd[0]] === pd[0]; }).map(function (dd) { return dd[1].toLowerCase(); });
+      var st = on ? ST.agendado : ST.planejado;
+      return {
+        name: pd[1], mono: pd[2], desc: pd[3], statusLabel: on ? 'Conectado' : 'Desconectado',
+        badge: badge(st), dot: dot(st.dot),
+        uses: uses.length ? 'Padrão para ' + uses.join(', ') : 'Não é padrão em nenhuma tarefa',
+        toggleLabel: on ? 'Desconectar' : 'Conectar',
+        toggle: function () { setCfg(function (c) { var cn = Object.assign({}, c.connected); cn[pd[0]] = !cn[pd[0]]; return { connected: cn }; }); }
+      };
+    });
+
+    var selRaw = all.filter(function (p) { return p.id === s.selId; })[0];
+    var sel = selRaw ? Object.assign({}, selRaw, {
+      avatar: avatar((accMap[selRaw.acc] || NOACC).color, 28),
+      captionText: selRaw.caption || 'A legenda será escrita pela IA a partir do tema.',
+      previewNote: selRaw.status === 'planejado' ? 'Criativo ainda não gerado' : selRaw.status === 'gerando' ? 'Gerando…' : selRaw.providerLabel,
+      modeLabel: (accMap[selRaw.acc] || {}).approval ? 'Pede aprovação' : 'Publica direto',
+      originLabel: selRaw.origin === 'Upload' ? 'Enviado por você' : 'Gerado por IA',
+      canApprove: selRaw.status === 'aguardando',
+      canGenerate: selRaw.status === 'planejado',
+      canRegen: selRaw.origin !== 'Upload' && (selRaw.status === 'aguardando' || selRaw.status === 'reprovado' || selRaw.status === 'agendado'),
+      canPublish: selRaw.status === 'agendado',
+      isGenerating: selRaw.status === 'gerando'
+    }) : {};
+
+    return {
+      navGroups: navGroups, accountCount: tAccounts.length,
+      tenants: s.tenants.filter(function (t) { return t.active || t.id === s.tenant; }), tenantId: tenantObj.id, tenantName: tenantObj.name, tenantPlan: tenantObj.plan,
+      onTenant: function (e) { switchTenant(e.target.value); },
+      screenTitle: titles[s.screen][0], screenSub: titles[s.screen][1],
+      isCal: s.screen === 'cal', isPlan: s.screen === 'plan', isApprove: s.screen === 'approve', isUpload: s.screen === 'upload',
+      isAccounts: s.screen === 'accounts', isInsights: s.screen === 'insights', isAI: s.screen === 'ai', isTeam: s.screen === 'team', isAdmin: s.screen === 'admin',
+      goPlan: go('plan'), goUpload: go('upload'),
+      accFilters: accFilters, legend: legend, weekdays: WD, cells: cells, calCount: filtered.length,
+      accounts: tAccounts, planAcc: planAccObj.id, planAccObj: planAccObj, draft: s.draft, planRows: planRows, planRowsCount: planRows.length, planPending: planPendingIds.length,
+      onPlanAcc: function (e) { self.setState({ planAcc: e.target.value }); },
+      onDay: setDraft('day', true), onTime: setDraft('time'), onFormat: setDraft('format'), onTheme: setDraft('theme'),
+      addRow: function () {
+        if (!s.draft.theme.trim() || !planAccObj.id) return;
+        self.setState(function (st) {
+          return { nextId: st.nextId + 1, posts: st.posts.concat([{ id: st.nextId, acc: planAccObj.id, day: st.draft.day, time: st.draft.time, theme: st.draft.theme.trim(), format: st.draft.format, status: 'planejado', origin: 'IA', provider: null }]), draft: Object.assign({}, st.draft, { theme: '' }) };
+        });
+      },
+      suggest: function () {
+        if (!planAccObj.id) return;
+        var ideas = [[21, 'Carrossel', '5 sinais de que sua clínica precisa de um ERP'], [22, 'Reels', 'Um dia na recepção com automação'], [26, 'Carrossel', 'O que é repasse médico e como automatizar'], [28, 'Reels', 'O que muda com IA na saúde em 2027']];
+        self.setState(function (st) {
+          var n = st.nextId;
+          return { nextId: n + 4, posts: st.posts.concat(ideas.map(function (it, i) { return { id: n + i, acc: planAccObj.id, day: it[0], time: '18:00', theme: it[2], format: it[1], status: 'planejado', origin: 'IA', provider: null }; })) };
+        });
+      },
+      generateAll: function () { if (planPendingIds.length) self.generate(planPendingIds); },
+      planModeA: seg(planAccObj.approval), planModeB: seg(!planAccObj.approval),
+      setPlanApprove: function () { if (planAccObj.id) self.setMode(planAccObj.id, true); }, setPlanDirect: function () { if (planAccObj.id) self.setMode(planAccObj.id, false); },
+      planModeHint: planAccObj.approval ? 'O conteúdo gerado vai para a fila de aprovação.' : 'O conteúdo gerado é agendado e publicado no horário, sem revisão.',
+      pending: pendingList, noPending: pendingList.length === 0,
+      uploads: uploads, noUploads: uploads.length === 0,
+      onUpload: function (e) {
+        var files = Array.prototype.slice.call(e.target.files || []);
+        if (!files.length) return;
+        self.setState(function (st) {
+          return {
+            uploads: files.map(function (f, i) {
+              var isVid = (f.type || '').indexOf('video') === 0;
+              var ext = (f.name.split('.').pop() || '').toUpperCase().slice(0, 4);
+              return { id: 'f' + Date.now() + i, tenant: st.tenant, name: f.name, ext: ext, info: (isVid ? 'Vídeo' : 'Imagem') + ' · ' + (f.size / 1048576).toFixed(1).replace('.', ',') + ' MB', done: false };
+            }).concat(st.uploads)
+          };
+        });
+      },
+      accountCards: accountCards, noAccounts: tAccounts.length === 0,
+      addAccount: function () {
+        self.setState(function (st) {
+          var n = st.accounts.length + 1;
+          return { accounts: st.accounts.concat([{ id: 'a' + n + '_' + st.nextId, tenant: st.tenant, handle: '@nova_conta_' + n, name: 'Conta conectada', approval: true, color: COLORS[(n - 1) % COLORS.length] }]), nextId: st.nextId + 1 };
+        });
+      },
+      insAccPills: tAccounts.map(function (a) { return { label: a.handle, style: seg(insAccObj.id === a.id), pick: function () { self.setState({ insAcc: a.id }); } }; }),
+      kpis: kpis, slots: SLOTS, heat: heat, formatBars: formatBars, ageBars: ageBars,
+      cities: 'Curitiba 38% · Araucária 12% · São José dos Pinhais 9% · Londrina 6%',
+      topPosts: topPosts, advice: advice,
+      defaults: defaults, providers: providers,
+      billA: seg(tcfg.billing === 'platform'), billB: seg(tcfg.billing === 'own'),
+      setBillPlatform: function () { setCfg(function () { return { billing: 'platform' }; }); },
+      setBillOwn: function () { setCfg(function () { return { billing: 'own' }; }); },
+      billHint: tcfg.billing === 'own' ? 'O cliente cadastra as próprias chaves e paga direto aos provedores.' : 'Usa as chaves da Visus e desconta créditos do plano do cliente.',
+      inviteEmail: s.inviteEmail, onInvite: function (e) { self.setState({ inviteEmail: e.target.value }); },
+      invite: function () {
+        var em = (s.inviteEmail || '').trim();
+        if (em.indexOf('@') < 1) return;
+        self.setState(function (st) { return { users: st.users.concat([{ id: 'u' + st.nextId, tenant: st.tenant, name: em.split('@')[0] + ' (convite enviado)', email: em, role: 'editor' }]), nextId: st.nextId + 1, inviteEmail: '' }; });
+      },
+      teamRows: s.users.filter(function (u) { return u.tenant === tenantObj.id; }).map(function (u) {
+        return Object.assign({}, u, {
+          roleDesc: ROLES[u.role][1],
+          setRole: function (e) { var v = e.target.value; self.setState(function (st) { return { users: st.users.map(function (x) { return x.id === u.id ? Object.assign({}, x, { role: v }) : x; }) }; }); }
+        });
+      }),
+      adminKpis: [
+        { label: 'Clientes ativos', value: s.tenants.filter(function (t) { return t.active; }).length },
+        { label: 'Contas do Instagram', value: s.accounts.length },
+        { label: 'Pessoas', value: s.users.length },
+        { label: 'Publicações em dezembro', value: s.posts.length }
+      ],
+      newTenantName: s.newTenantName, newTenantPlan: s.newTenantPlan,
+      onNewTenant: function (e) { self.setState({ newTenantName: e.target.value }); },
+      onNewPlan: function (e) { self.setState({ newTenantPlan: e.target.value }); },
+      createTenant: function () {
+        var nm = (s.newTenantName || '').trim();
+        if (!nm) return;
+        self.setState(function (st) {
+          var id = 't' + st.nextId;
+          var c = Object.assign({}, st.cfg); c[id] = newCfg();
+          return { tenants: st.tenants.concat([{ id: id, name: nm, plan: st.newTenantPlan, active: true }]), cfg: c, nextId: st.nextId + 1, newTenantName: '' };
+        });
+      },
+      tenantRows: s.tenants.map(function (t) {
+        var accIds = s.accounts.filter(function (a) { return a.tenant === t.id; }).map(function (a) { return a.id; });
+        var st = t.active ? ST.agendado : ST.reprovado;
+        return {
+          name: t.name, plan: t.plan, accounts: accIds.length,
+          users: s.users.filter(function (u) { return u.tenant === t.id; }).length,
+          posts: s.posts.filter(function (p) { return accIds.indexOf(p.acc) >= 0; }).length,
+          billing: s.cfg[t.id].billing === 'own' ? 'Chaves do cliente' : 'Créditos da plataforma',
+          statusLabel: t.active ? 'Ativo' : 'Suspenso', badge: badge(st), dot: dot(st.dot),
+          enter: function () { if (t.active) switchTenant(t.id, 'cal'); },
+          toggleLabel: t.active ? 'Suspender' : 'Reativar',
+          toggle: function () { self.setState(function (x) { return { tenants: x.tenants.map(function (y) { return y.id === t.id ? Object.assign({}, y, { active: !y.active }) : y; }) }; }); }
+        };
+      }),
+      hasSel: !!selRaw, sel: sel, closeSel: function () { self.setState({ selId: null }); }
+    };
+  }
+}
+</script>
+</body>
+</html>

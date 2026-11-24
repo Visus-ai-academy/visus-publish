@@ -43,3 +43,7 @@ export function must<R extends { data: unknown; error: { message: string } | nul
   if (res.data === null) throw new Error("sem dados");
   return res.data as NonNullable<R["data"]>;
 }
+
+export function ok(res: { error: { message: string } | null }) {
+  if (res.error) throw new Error(res.error.message);
+}

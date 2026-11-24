@@ -1,4 +1,10 @@
-export type Json = string | number | boolean | null | { [key: string]: Json | undefined } | Json[];
+export type Json =
+  | string
+  | number
+  | boolean
+  | null
+  | { [key: string]: Json | undefined }
+  | Json[];
 
 export type Database = {
   graphql_public: {
@@ -10,7 +16,12 @@ export type Database = {
     };
     Functions: {
       graphql: {
-        Args: { extensions?: Json; operationName?: string; query?: string; variables?: Json };
+        Args: {
+          extensions?: Json;
+          operationName?: string;
+          query?: string;
+          variables?: Json;
+        };
         Returns: Json;
       };
     };
@@ -56,13 +67,6 @@ export type Database = {
           views?: number | null;
         };
         Relationships: [
-          {
-            foreignKeyName: "account_insights_daily_ig_account_id_fkey";
-            columns: ["ig_account_id"];
-            isOneToOne: false;
-            referencedRelation: "ig_accounts";
-            referencedColumns: ["id"];
-          },
           {
             foreignKeyName: "account_insights_daily_ig_account_same_tenant";
             columns: ["ig_account_id", "tenant_id"];
@@ -225,13 +229,6 @@ export type Database = {
         };
         Relationships: [
           {
-            foreignKeyName: "analysis_findings_ig_account_id_fkey";
-            columns: ["ig_account_id"];
-            isOneToOne: false;
-            referencedRelation: "ig_accounts";
-            referencedColumns: ["id"];
-          },
-          {
             foreignKeyName: "analysis_findings_ig_account_same_tenant";
             columns: ["ig_account_id", "tenant_id"];
             isOneToOne: false;
@@ -277,13 +274,6 @@ export type Database = {
           tenant_id?: string;
         };
         Relationships: [
-          {
-            foreignKeyName: "audience_snapshots_ig_account_id_fkey";
-            columns: ["ig_account_id"];
-            isOneToOne: false;
-            referencedRelation: "ig_accounts";
-            referencedColumns: ["id"];
-          },
           {
             foreignKeyName: "audience_snapshots_ig_account_same_tenant";
             columns: ["ig_account_id", "tenant_id"];
@@ -381,13 +371,6 @@ export type Database = {
           updated_at?: string;
         };
         Relationships: [
-          {
-            foreignKeyName: "brand_profiles_ig_account_id_fkey";
-            columns: ["ig_account_id"];
-            isOneToOne: true;
-            referencedRelation: "ig_accounts";
-            referencedColumns: ["id"];
-          },
           {
             foreignKeyName: "brand_profiles_ig_account_same_tenant";
             columns: ["ig_account_id", "tenant_id"];
@@ -498,13 +481,6 @@ export type Database = {
           tenant_id?: string;
         };
         Relationships: [
-          {
-            foreignKeyName: "generation_jobs_post_id_fkey";
-            columns: ["post_id"];
-            isOneToOne: false;
-            referencedRelation: "posts";
-            referencedColumns: ["id"];
-          },
           {
             foreignKeyName: "generation_jobs_post_same_tenant";
             columns: ["post_id", "tenant_id"];
@@ -678,13 +654,6 @@ export type Database = {
         };
         Relationships: [
           {
-            foreignKeyName: "media_insights_post_id_fkey";
-            columns: ["post_id"];
-            isOneToOne: false;
-            referencedRelation: "posts";
-            referencedColumns: ["id"];
-          },
-          {
             foreignKeyName: "media_insights_post_same_tenant";
             columns: ["post_id", "tenant_id"];
             isOneToOne: false;
@@ -780,13 +749,6 @@ export type Database = {
         };
         Relationships: [
           {
-            foreignKeyName: "post_events_post_id_fkey";
-            columns: ["post_id"];
-            isOneToOne: false;
-            referencedRelation: "posts";
-            referencedColumns: ["id"];
-          },
-          {
             foreignKeyName: "post_events_post_same_tenant";
             columns: ["post_id", "tenant_id"];
             isOneToOne: false;
@@ -839,13 +801,6 @@ export type Database = {
         };
         Relationships: [
           {
-            foreignKeyName: "post_media_post_id_fkey";
-            columns: ["post_id"];
-            isOneToOne: false;
-            referencedRelation: "posts";
-            referencedColumns: ["id"];
-          },
-          {
             foreignKeyName: "post_media_post_same_tenant";
             columns: ["post_id", "tenant_id"];
             isOneToOne: false;
@@ -878,9 +833,11 @@ export type Database = {
           is_ai_generated: boolean;
           last_error: string | null;
           media_provider: string | null;
+          next_attempt_at: string | null;
           origin: Database["public"]["Enums"]["post_origin"];
           permalink: string | null;
           published_at: string | null;
+          publishing_started_at: string | null;
           scheduled_at: string;
           status: Database["public"]["Enums"]["post_status"];
           tenant_id: string;
@@ -904,9 +861,11 @@ export type Database = {
           is_ai_generated?: boolean;
           last_error?: string | null;
           media_provider?: string | null;
+          next_attempt_at?: string | null;
           origin?: Database["public"]["Enums"]["post_origin"];
           permalink?: string | null;
           published_at?: string | null;
+          publishing_started_at?: string | null;
           scheduled_at: string;
           status?: Database["public"]["Enums"]["post_status"];
           tenant_id: string;
@@ -929,9 +888,11 @@ export type Database = {
           is_ai_generated?: boolean;
           last_error?: string | null;
           media_provider?: string | null;
+          next_attempt_at?: string | null;
           origin?: Database["public"]["Enums"]["post_origin"];
           permalink?: string | null;
           published_at?: string | null;
+          publishing_started_at?: string | null;
           scheduled_at?: string;
           status?: Database["public"]["Enums"]["post_status"];
           tenant_id?: string;
@@ -939,13 +900,6 @@ export type Database = {
           updated_at?: string;
         };
         Relationships: [
-          {
-            foreignKeyName: "posts_ig_account_id_fkey";
-            columns: ["ig_account_id"];
-            isOneToOne: false;
-            referencedRelation: "ig_accounts";
-            referencedColumns: ["id"];
-          },
           {
             foreignKeyName: "posts_ig_account_same_tenant";
             columns: ["ig_account_id", "tenant_id"];
@@ -1017,9 +971,11 @@ export type Database = {
           is_ai_generated: boolean;
           last_error: string | null;
           media_provider: string | null;
+          next_attempt_at: string | null;
           origin: Database["public"]["Enums"]["post_origin"];
           permalink: string | null;
           published_at: string | null;
+          publishing_started_at: string | null;
           scheduled_at: string;
           status: Database["public"]["Enums"]["post_status"];
           tenant_id: string;
@@ -1033,8 +989,23 @@ export type Database = {
           isSetofReturn: true;
         };
       };
+      delete_ig_token: { Args: { p_account: string }; Returns: undefined };
+      finish_publish: {
+        Args: {
+          p_error?: string;
+          p_ig_media_id?: string;
+          p_outcome: string;
+          p_permalink?: string;
+          p_post: string;
+          p_retry_at?: string;
+        };
+        Returns: Database["public"]["Enums"]["post_status"];
+      };
       has_tenant_role: {
-        Args: { roles?: Database["public"]["Enums"]["member_role"][]; t: string };
+        Args: {
+          roles?: Database["public"]["Enums"]["member_role"][];
+          t: string;
+        };
         Returns: boolean;
       };
       invitation_preview: {
@@ -1047,11 +1018,24 @@ export type Database = {
         }[];
       };
       is_platform_admin: { Args: Record<PropertyKey, never>; Returns: boolean };
+      read_ig_token: { Args: { p_account: string }; Returns: string };
+      release_stuck_publishing: {
+        Args: { p_older_than?: string };
+        Returns: number;
+      };
       review_post: {
         Args: { p_approve: boolean; p_note?: string; p_post: string };
         Returns: Database["public"]["Enums"]["post_status"];
       };
+      set_ig_container: {
+        Args: { p_container: string; p_post: string };
+        Returns: undefined;
+      };
       storage_tenant: { Args: { p_name: string }; Returns: string };
+      store_ig_token: {
+        Args: { p_account: string; p_expires_at: string; p_token: string };
+        Returns: undefined;
+      };
       tenant_members: {
         Args: { p_tenant: string };
         Returns: {
@@ -1062,7 +1046,11 @@ export type Database = {
         }[];
       };
       transition_post: {
-        Args: { p_note?: string; p_post: string; p_to: Database["public"]["Enums"]["post_status"] };
+        Args: {
+          p_note?: string;
+          p_post: string;
+          p_to: Database["public"]["Enums"]["post_status"];
+        };
         Returns: Database["public"]["Enums"]["post_status"];
       };
     };
@@ -1095,27 +1083,34 @@ export type Database = {
 
 type DatabaseWithoutInternals = Omit<Database, "__InternalSupabase">;
 
-type DefaultSchema = DatabaseWithoutInternals[Extract<keyof Database, "public">];
+type DefaultSchema = DatabaseWithoutInternals[Extract<
+  keyof Database,
+  "public"
+>];
 
 export type Tables<
   DefaultSchemaTableNameOrOptions extends
     | keyof (DefaultSchema["Tables"] & DefaultSchema["Views"])
     | { schema: keyof DatabaseWithoutInternals },
-  TableName extends (DefaultSchemaTableNameOrOptions extends {
+  TableName extends DefaultSchemaTableNameOrOptions extends {
     schema: keyof DatabaseWithoutInternals;
   }
     ? keyof (DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"] &
         DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Views"])
-    : never) = never,
-> = DefaultSchemaTableNameOrOptions extends { schema: keyof DatabaseWithoutInternals }
+    : never = never,
+> = DefaultSchemaTableNameOrOptions extends {
+  schema: keyof DatabaseWithoutInternals;
+}
   ? (DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"] &
       DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Views"])[TableName] extends {
       Row: infer R;
     }
     ? R
     : never
-  : DefaultSchemaTableNameOrOptions extends keyof (DefaultSchema["Tables"] & DefaultSchema["Views"])
-    ? (DefaultSchema["Tables"] & DefaultSchema["Views"])[DefaultSchemaTableNameOrOptions] extends {
+  : DefaultSchemaTableNameOrOptions extends keyof (DefaultSchema["Tables"] &
+        DefaultSchema["Views"])
+    ? (DefaultSchema["Tables"] &
+        DefaultSchema["Views"])[DefaultSchemaTableNameOrOptions] extends {
         Row: infer R;
       }
       ? R
@@ -1126,12 +1121,14 @@ export type TablesInsert<
   DefaultSchemaTableNameOrOptions extends
     | keyof DefaultSchema["Tables"]
     | { schema: keyof DatabaseWithoutInternals },
-  TableName extends (DefaultSchemaTableNameOrOptions extends {
+  TableName extends DefaultSchemaTableNameOrOptions extends {
     schema: keyof DatabaseWithoutInternals;
   }
     ? keyof DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"]
-    : never) = never,
-> = DefaultSchemaTableNameOrOptions extends { schema: keyof DatabaseWithoutInternals }
+    : never = never,
+> = DefaultSchemaTableNameOrOptions extends {
+  schema: keyof DatabaseWithoutInternals;
+}
   ? DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"][TableName] extends {
       Insert: infer I;
     }
@@ -1149,12 +1146,14 @@ export type TablesUpdate<
   DefaultSchemaTableNameOrOptions extends
     | keyof DefaultSchema["Tables"]
     | { schema: keyof DatabaseWithoutInternals },
-  TableName extends (DefaultSchemaTableNameOrOptions extends {
+  TableName extends DefaultSchemaTableNameOrOptions extends {
     schema: keyof DatabaseWithoutInternals;
   }
     ? keyof DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"]
-    : never) = never,
-> = DefaultSchemaTableNameOrOptions extends { schema: keyof DatabaseWithoutInternals }
+    : never = never,
+> = DefaultSchemaTableNameOrOptions extends {
+  schema: keyof DatabaseWithoutInternals;
+}
   ? DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"][TableName] extends {
       Update: infer U;
     }
@@ -1172,12 +1171,14 @@ export type Enums<
   DefaultSchemaEnumNameOrOptions extends
     | keyof DefaultSchema["Enums"]
     | { schema: keyof DatabaseWithoutInternals },
-  EnumName extends (DefaultSchemaEnumNameOrOptions extends {
+  EnumName extends DefaultSchemaEnumNameOrOptions extends {
     schema: keyof DatabaseWithoutInternals;
   }
     ? keyof DatabaseWithoutInternals[DefaultSchemaEnumNameOrOptions["schema"]]["Enums"]
-    : never) = never,
-> = DefaultSchemaEnumNameOrOptions extends { schema: keyof DatabaseWithoutInternals }
+    : never = never,
+> = DefaultSchemaEnumNameOrOptions extends {
+  schema: keyof DatabaseWithoutInternals;
+}
   ? DatabaseWithoutInternals[DefaultSchemaEnumNameOrOptions["schema"]]["Enums"][EnumName]
   : DefaultSchemaEnumNameOrOptions extends keyof DefaultSchema["Enums"]
     ? DefaultSchema["Enums"][DefaultSchemaEnumNameOrOptions]
@@ -1187,12 +1188,14 @@ export type CompositeTypes<
   PublicCompositeTypeNameOrOptions extends
     | keyof DefaultSchema["CompositeTypes"]
     | { schema: keyof DatabaseWithoutInternals },
-  CompositeTypeName extends (PublicCompositeTypeNameOrOptions extends {
+  CompositeTypeName extends PublicCompositeTypeNameOrOptions extends {
     schema: keyof DatabaseWithoutInternals;
   }
     ? keyof DatabaseWithoutInternals[PublicCompositeTypeNameOrOptions["schema"]]["CompositeTypes"]
-    : never) = never,
-> = PublicCompositeTypeNameOrOptions extends { schema: keyof DatabaseWithoutInternals }
+    : never = never,
+> = PublicCompositeTypeNameOrOptions extends {
+  schema: keyof DatabaseWithoutInternals;
+}
   ? DatabaseWithoutInternals[PublicCompositeTypeNameOrOptions["schema"]]["CompositeTypes"][CompositeTypeName]
   : PublicCompositeTypeNameOrOptions extends keyof DefaultSchema["CompositeTypes"]
     ? DefaultSchema["CompositeTypes"][PublicCompositeTypeNameOrOptions]

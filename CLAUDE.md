@@ -52,17 +52,19 @@ Notas do scaffold:
 app/(auth)/…                    login, convite
 app/[tenant]/calendario|planejamento|aprovacoes|criativos|insights|contas|ia|equipe
 app/admin/clientes
-app/api/meta/oauth/callback     OAuth do Instagram
+app/api/meta/oauth/start|callback  OAuth do Instagram (state assinado + nonce em cookie)
+app/api/jobs/[job]              rotinas chamadas pelo agendador (publish-due, refresh-tokens); ver docs/OPERACAO.md
 lib/supabase/{server,client}.ts
 lib/tenant.ts                   resolve tenant ativo (cookie vp_tenant) e valida membership
 lib/posts/transitions.ts        máquina de estados (chama transition_post / review_post no banco)
 lib/invitations/                convites (token aleatório; banco guarda só sha256)
-lib/meta/                       cliente da Instagram API (container, publish, insights, tokens)
+lib/meta/                       cliente da Instagram API (container, publish, insights, tokens), contas e state do OAuth
+lib/publishing/publisher.ts     publicação: claim com lock, limite da Meta, container salvo antes do publish, retentativas
 lib/ai/providers/               openai, gemini, gemini-image, canva, higgsfield, veo (interface única)
 lib/ai/prompts/                 caption, image, carousel, themes, analysis (+ schemas Zod)
-supabase/functions/             publish-due, publish, generate, poll-async-generation,
-                                collect-media-insights, collect-account-insights,
-                                refresh-tokens, weekly-analysis
+supabase/functions/             (futuro) generate, poll-async-generation, insights, weekly-analysis.
+                                Na Fase 1 as rotinas de publicação ficaram em app/api/jobs para reaproveitar
+                                lib/ e os testes; migrar para Edge Functions é opcional.
 ```
 
 ## Design

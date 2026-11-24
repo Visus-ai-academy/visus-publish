@@ -2,7 +2,7 @@ import { createServerClient } from "@supabase/ssr";
 import { NextResponse, type NextRequest } from "next/server";
 import { TENANT_COOKIE, tenantSlugSchema } from "@/lib/tenant-core";
 
-const PUBLIC_PATHS = ["/login", "/convite"];
+const PUBLIC_PATHS = ["/login", "/convite", "/api/jobs"];
 const RESERVED = new Set(["login", "convite", "admin", "api", "sair"]);
 
 export async function proxy(request: NextRequest) {

@@ -2,6 +2,9 @@ import type { SupabaseClient } from "@supabase/supabase-js";
 import type { Database } from "@/lib/supabase/database.types";
 import { MetaApiError, type ContainerInput } from "@/lib/meta/client";
 import type { MetaPort } from "@/lib/meta/port";
+import { MetricoolApiError, type InstagramType, type MetricoolCredentials } from "@/lib/metricool/client";
+import type { MetricoolPort } from "@/lib/metricool/port";
+import { utcToZoned } from "@/lib/time";
 
 type Db = SupabaseClient<Database>;
 type Post = Database["public"]["Tables"]["posts"]["Row"];
@@ -13,13 +16,21 @@ const SIGNED_URL_SECONDS = 6 * 60 * 60;
 export type PublishOptions = {
   db: Db; // service_role
   meta: MetaPort;
+  /** Necessário quando alguma conta publica pelo Metricool. */
+  metricool?: MetricoolPort;
   batch?: number;
   now?: () => Date;
   sleep?: (ms: number) => Promise<void>;
   videoPollMs?: number[];
 };
 
-export type PublishResult = { postId: string; tenantId: string; outcome: "published" | "retry" | "deferred" | "failed"; error?: string };
+export type PublishResult = {
+  postId: string;
+  tenantId: string;
+  /** sent = entregue ao Metricool, esperando a confirmação da publicação */
+  outcome: "published" | "retry" | "deferred" | "failed" | "sent";
+  error?: string;
+};
 
 /** Job `publish-due`: pega os posts vencidos com lock e publica. Seguro para rodar em paralelo. */
 export async function publishDue(opts: PublishOptions): Promise<PublishResult[]> {
@@ -39,7 +50,8 @@ export async function publishDue(opts: PublishOptions): Promise<PublishResult[]>
       return out;
     }),
   );
-  return results.flat();
+  const confirmed = await confirmMetricool(opts);
+  return [...results.flat(), ...confirmed];
 }
 
 class PublishFailure extends Error {
@@ -48,17 +60,38 @@ class PublishFailure extends Error {
   }
 }
 
+type SignedMedia = { kind: "image" | "video"; url: string };
+
+async function signedMedia(db: Db, post: Post): Promise<SignedMedia[]> {
+  const { data: media, error } = await db
+    .from("post_media")
+    .select("kind, storage_path, position")
+    .eq("tenant_id", post.tenant_id)
+    .eq("post_id", post.id)
+    .order("position");
+  if (error) throw new Error(error.message);
+  if (!media?.length) throw new PublishFailure("Post sem mídia.", "failed");
+  return Promise.all(
+    media.map(async (m) => {
+      const { data, error: e } = await db.storage.from("media").createSignedUrl(m.storage_path, SIGNED_URL_SECONDS);
+      if (e || !data) throw new PublishFailure("Arquivo de mídia não encontrado no armazenamento.", "failed");
+      return { kind: m.kind as "image" | "video", url: data.signedUrl };
+    }),
+  );
+}
+
 export async function publishOne(opts: PublishOptions, post: Post): Promise<PublishResult> {
   const { db, meta } = opts;
   const now = opts.now ?? (() => new Date());
   try {
     const { data: account } = await db
       .from("ig_accounts")
-      .select("id, ig_user_id, status")
+      .select("id, ig_user_id, status, publish_via, metricool_blog_id")
       .eq("tenant_id", post.tenant_id)
       .eq("id", post.ig_account_id)
       .single();
     if (!account || account.status !== "connected") throw new PublishFailure("A conta do Instagram precisa ser reconectada.", "failed");
+    if (account.publish_via === "metricool") return await publishViaMetricool(opts, post, account.metricool_blog_id!);
 
     const { data: token } = await db.rpc("read_ig_token", { p_account: account.id });
     if (!token) throw new PublishFailure("A conta do Instagram precisa ser reconectada.", "failed");
@@ -93,6 +126,9 @@ export async function publishOne(opts: PublishOptions, post: Post): Promise<Publ
     return { postId: post.id, tenantId: post.tenant_id, outcome: "published" };
   } catch (e) {
     const f = classify(e, post, now());
+    if (e instanceof MetricoolApiError && (e.status === 401 || e.status === 403)) {
+      f.message = e.message;
+    }
     if (e instanceof MetaApiError && e.code === 190) {
       await db.from("ig_accounts").update({ status: "needs_reauth" }).eq("tenant_id", post.tenant_id).eq("id", post.ig_account_id);
     }
@@ -110,13 +146,15 @@ function classify(e: unknown, post: Post, now: Date): PublishFailure {
     }
     return e;
   }
-  const transient = e instanceof MetaApiError ? e.transient : true;
+  const transient = e instanceof MetaApiError || e instanceof MetricoolApiError ? e.transient : true;
   const message =
     e instanceof MetaApiError
       ? e.code === 190
         ? "O acesso à conta expirou. Reconecte a conta do Instagram."
         : `Meta recusou: ${e.message}`
-      : "Erro inesperado ao publicar.";
+      : e instanceof MetricoolApiError
+        ? `Metricool recusou: ${e.message}`
+        : "Erro inesperado ao publicar.";
   if (transient && post.attempts < MAX_ATTEMPTS) {
     const minutes = RETRY_MINUTES[Math.min(post.attempts - 1, RETRY_MINUTES.length - 1)] ?? 15;
     return new PublishFailure(message, "retry", new Date(now.getTime() + minutes * 60_000));
@@ -143,22 +181,7 @@ async function finish(
 
 async function buildContainer(opts: PublishOptions, post: Post, token: string, igUserId: string): Promise<string> {
   const { db, meta } = opts;
-  const { data: media, error } = await db
-    .from("post_media")
-    .select("kind, storage_path, position")
-    .eq("tenant_id", post.tenant_id)
-    .eq("post_id", post.id)
-    .order("position");
-  if (error) throw new Error(error.message);
-  if (!media?.length) throw new PublishFailure("Post sem mídia.", "failed");
-
-  const urls = await Promise.all(
-    media.map(async (m) => {
-      const { data, error: e } = await db.storage.from("media").createSignedUrl(m.storage_path, SIGNED_URL_SECONDS);
-      if (e || !data) throw new PublishFailure("Arquivo de mídia não encontrado no armazenamento.", "failed");
-      return { kind: m.kind as "image" | "video", url: data.signedUrl };
-    }),
-  );
+  const urls = await signedMedia(db, post);
 
   const caption = post.caption ?? undefined;
   const aiGenerated = post.is_ai_generated;
@@ -212,4 +235,116 @@ async function waitFinished(opts: PublishOptions, token: string, containerId: st
   }
   // Ainda processando: o container fica salvo e a próxima rodada continua dele.
   throw new PublishFailure("A Meta ainda está processando o vídeo.", "retry", new Date(Date.now() + 2 * 60_000));
+}
+
+// ---------------- Metricool ----------------
+
+const METRICOOL_TYPE: Record<Post["format"], InstagramType> = { image: "POST", carousel: "POST", reels: "REEL", story: "STORY" };
+/** O Metricool só aceita horário no futuro: entregamos com essa folga e ele publica no ciclo seguinte. */
+const METRICOOL_LEAD_MS = 2 * 60_000;
+
+async function metricoolCreds(db: Db, tenantId: string): Promise<MetricoolCredentials> {
+  const { data } = await db.rpc("read_metricool_credentials", { p_tenant: tenantId });
+  const row = data?.[0];
+  if (!row?.token) throw new PublishFailure("Conecte o Metricool deste cliente na tela Contas do Instagram.", "failed");
+  return { userId: row.user_id, token: row.token };
+}
+
+function requireMetricool(opts: PublishOptions): MetricoolPort {
+  if (!opts.metricool) throw new PublishFailure("Publicação pelo Metricool não está configurada no servidor.", "failed");
+  return opts.metricool;
+}
+
+async function publishViaMetricool(opts: PublishOptions, post: Post, blogId: string): Promise<PublishResult> {
+  const { db } = opts;
+  const metricool = requireMetricool(opts);
+  const now = opts.now ?? (() => new Date());
+  const creds = await metricoolCreds(db, post.tenant_id);
+  const sent = (): PublishResult => ({ postId: post.id, tenantId: post.tenant_id, outcome: "sent" });
+
+  // Nova tentativa de um post já entregue: nunca cria outro se o anterior saiu ou ainda vai sair.
+  if (post.external_post_id && post.publish_provider === "metricool") {
+    const st = await metricool.getPostStatus(creds, blogId, post.external_post_id);
+    if (st.status === "PUBLISHED") {
+      await finish(db, post.id, "published", { permalink: st.publicUrl });
+      return { postId: post.id, tenantId: post.tenant_id, outcome: "published" };
+    }
+    if (st.status !== "ERROR") {
+      await setExternal(db, post.id, post.external_post_id);
+      return sent();
+    }
+    await metricool.deletePost(creds, blogId, post.external_post_id).catch(() => undefined);
+  }
+
+  const files = await signedMedia(db, post);
+  if (post.format === "carousel" && (files.length < 2 || files.length > 10)) throw new PublishFailure("Carrossel precisa de 2 a 10 arquivos.", "failed");
+  if (post.format === "reels" && files[0].kind !== "video") throw new PublishFailure("Reels precisa de um vídeo.", "failed");
+  if (post.format === "image" && files[0].kind !== "image") throw new PublishFailure("Post de foto precisa de uma imagem.", "failed");
+
+  // URL assinada expira; o Metricool precisa de uma cópia própria da mídia.
+  const media = await Promise.all(
+    files.map(async (f) => {
+      try {
+        return await metricool.normalizeMedia(creds, blogId, f.url);
+      } catch (e) {
+        if (e instanceof MetricoolApiError && (e.status === 401 || e.status === 403)) throw e;
+        return f.url; // saveExternalMediaFiles faz o Metricool copiar a partir da URL assinada
+      }
+    }),
+  );
+
+  const { data: tenant } = await db.from("tenants").select("timezone").eq("id", post.tenant_id).single();
+  const tz = tenant?.timezone ?? "America/Sao_Paulo";
+  const at = utcToZoned(new Date(now().getTime() + METRICOOL_LEAD_MS), tz);
+
+  const externalId = await metricool.schedulePost(creds, {
+    blogId,
+    dateTime: `${at.date}T${at.time}:00`,
+    timezone: tz,
+    text: post.format === "story" ? "" : (post.caption ?? ""),
+    media,
+    type: METRICOOL_TYPE[post.format],
+  });
+  await setExternal(db, post.id, externalId);
+  return sent();
+}
+
+async function setExternal(db: Db, postId: string, externalId: string) {
+  const { error } = await db.rpc("set_external_post", { p_post: postId, p_provider: "metricool", p_external_id: externalId });
+  if (error) throw new Error(error.message);
+}
+
+/** Confirma no Metricool os posts entregues: publicado, erro ou ainda esperando. */
+export async function confirmMetricool(opts: PublishOptions): Promise<PublishResult[]> {
+  const { db, metricool } = opts;
+  if (!metricool) return [];
+  const { data: awaiting, error } = await db.rpc("claim_awaiting_confirmation", { p_limit: 50 });
+  if (error) throw new Error(`claim_awaiting_confirmation: ${error.message}`);
+
+  const out: PublishResult[] = [];
+  for (const post of awaiting ?? []) {
+    try {
+      const { data: account } = await db
+        .from("ig_accounts")
+        .select("metricool_blog_id")
+        .eq("tenant_id", post.tenant_id)
+        .eq("id", post.ig_account_id)
+        .single();
+      if (!account?.metricool_blog_id || !post.external_post_id) continue;
+      const creds = await metricoolCreds(db, post.tenant_id);
+      const st = await metricool.getPostStatus(creds, account.metricool_blog_id, post.external_post_id);
+      if (st.status === "PUBLISHED") {
+        await finish(db, post.id, "published", { permalink: st.publicUrl });
+        out.push({ postId: post.id, tenantId: post.tenant_id, outcome: "published" });
+      } else if (st.status === "ERROR") {
+        const message = `Metricool não publicou: ${st.detail ?? "erro sem detalhe"}`;
+        await finish(db, post.id, "failed", { error: message });
+        out.push({ postId: post.id, tenantId: post.tenant_id, outcome: "failed", error: message });
+      }
+    } catch {
+      // Falha ao consultar não muda o post; a próxima rodada consulta de novo e o
+      // release_stuck_publishing encerra depois de 3 h sem confirmação.
+    }
+  }
+  return out;
 }

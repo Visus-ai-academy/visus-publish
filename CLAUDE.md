@@ -36,8 +36,8 @@ Notas do scaffold:
 ## Regras inegociáveis
 
 1. **Multi-tenant:** toda tabela de negócio tem `tenant_id` + RLS. Nenhuma query no servidor com `service_role` sem `where tenant_id = …` explícito. Nova tabela = nova policy + teste de isolamento no mesmo PR.
-2. **Segredos:** tokens da Meta e chaves de IA só no Supabase Vault. Nunca no client, em logs, em `NEXT_PUBLIC_*` ou em respostas da API.
-3. **Chamadas externas** (Meta, OpenAI, Google, Higgsfield, Canva) só no servidor ou em Edge Functions.
+2. **Segredos:** tokens da Meta e do Metricool e chaves de IA só no Supabase Vault. Nunca no client, em logs, em `NEXT_PUBLIC_*` ou em respostas da API.
+3. **Chamadas externas** (Meta, Metricool, OpenAI, Google, Higgsfield, Canva) só no servidor ou em Edge Functions.
 4. **Estados do post** seguem a máquina da SPEC §6. Mudança de status só por função do domínio (`lib/posts/transitions.ts`), que grava `post_events`. Aprovação usa a função SQL `review_post`; transições de pessoa usam `transition_post`. O trigger `guard_post_columns` bloqueia o papel `authenticated` de mudar status ou colunas de publicação direto.
 5. **Publicação idempotente:** usar `claim_due_posts` (skip locked). Nunca publicar duas vezes o mesmo post; guardar `ig_container_id` antes de `media_publish`.
 6. **Limite da Meta:** consultar `content_publishing_limit` antes de publicar; não fixar o número no código.
@@ -59,7 +59,9 @@ lib/tenant.ts                   resolve tenant ativo (cookie vp_tenant) e valida
 lib/posts/transitions.ts        máquina de estados (chama transition_post / review_post no banco)
 lib/invitations/                convites (token aleatório; banco guarda só sha256)
 lib/meta/                       cliente da Instagram API (container, publish, insights, tokens), contas e state do OAuth
-lib/publishing/publisher.ts     publicação: claim com lock, limite da Meta, container salvo antes do publish, retentativas
+lib/metricool/                  cliente da API do Metricool (provedor inicial; cada conta escolhe em ig_accounts.publish_via)
+lib/publishing/publisher.ts     publicação: claim com lock, limite da Meta, container salvo antes do publish, retentativas;
+                                pelo Metricool: envia, guarda external_post_id e confirma depois (sem duplicar)
 lib/ai/providers/               openai, gemini, gemini-image, canva, higgsfield, veo (interface única)
 lib/ai/prompts/                 caption, image, carousel, themes, analysis (+ schemas Zod)
 supabase/functions/             (futuro) generate, poll-async-generation, insights, weekly-analysis.

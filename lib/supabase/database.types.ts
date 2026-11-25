@@ -505,8 +505,10 @@ export type Database = {
           created_at: string;
           id: string;
           ig_user_id: string;
+          metricool_blog_id: string | null;
           name: string | null;
           profile_picture_url: string | null;
+          publish_via: Database["public"]["Enums"]["publish_provider"];
           require_approval: boolean;
           status: Database["public"]["Enums"]["ig_account_status"];
           tenant_id: string;
@@ -522,8 +524,10 @@ export type Database = {
           created_at?: string;
           id?: string;
           ig_user_id: string;
+          metricool_blog_id?: string | null;
           name?: string | null;
           profile_picture_url?: string | null;
+          publish_via?: Database["public"]["Enums"]["publish_provider"];
           require_approval?: boolean;
           status?: Database["public"]["Enums"]["ig_account_status"];
           tenant_id: string;
@@ -538,8 +542,10 @@ export type Database = {
           created_at?: string;
           id?: string;
           ig_user_id?: string;
+          metricool_blog_id?: string | null;
           name?: string | null;
           profile_picture_url?: string | null;
+          publish_via?: Database["public"]["Enums"]["publish_provider"];
           require_approval?: boolean;
           status?: Database["public"]["Enums"]["ig_account_status"];
           tenant_id?: string;
@@ -699,6 +705,42 @@ export type Database = {
           },
         ];
       };
+      metricool_connections: {
+        Row: {
+          connected_by: string | null;
+          created_at: string;
+          metricool_user_id: string;
+          tenant_id: string;
+          token_secret_id: string | null;
+          updated_at: string;
+        };
+        ComputedFields: never;
+        Insert: {
+          connected_by?: string | null;
+          created_at?: string;
+          metricool_user_id: string;
+          tenant_id: string;
+          token_secret_id?: string | null;
+          updated_at?: string;
+        };
+        Update: {
+          connected_by?: string | null;
+          created_at?: string;
+          metricool_user_id?: string;
+          tenant_id?: string;
+          token_secret_id?: string | null;
+          updated_at?: string;
+        };
+        Relationships: [
+          {
+            foreignKeyName: "metricool_connections_tenant_id_fkey";
+            columns: ["tenant_id"];
+            isOneToOne: true;
+            referencedRelation: "tenants";
+            referencedColumns: ["id"];
+          },
+        ];
+      };
       platform_admins: {
         Row: {
           created_at: string;
@@ -825,17 +867,22 @@ export type Database = {
           caption_provider: string | null;
           created_at: string;
           created_by: string | null;
+          external_post_id: string | null;
           format: Database["public"]["Enums"]["post_format"];
           id: string;
           ig_account_id: string;
           ig_container_id: string | null;
           ig_media_id: string | null;
           is_ai_generated: boolean;
+          last_checked_at: string | null;
           last_error: string | null;
           media_provider: string | null;
           next_attempt_at: string | null;
           origin: Database["public"]["Enums"]["post_origin"];
           permalink: string | null;
+          publish_provider:
+            | Database["public"]["Enums"]["publish_provider"]
+            | null;
           published_at: string | null;
           publishing_started_at: string | null;
           scheduled_at: string;
@@ -853,17 +900,22 @@ export type Database = {
           caption_provider?: string | null;
           created_at?: string;
           created_by?: string | null;
+          external_post_id?: string | null;
           format: Database["public"]["Enums"]["post_format"];
           id?: string;
           ig_account_id: string;
           ig_container_id?: string | null;
           ig_media_id?: string | null;
           is_ai_generated?: boolean;
+          last_checked_at?: string | null;
           last_error?: string | null;
           media_provider?: string | null;
           next_attempt_at?: string | null;
           origin?: Database["public"]["Enums"]["post_origin"];
           permalink?: string | null;
+          publish_provider?:
+            | Database["public"]["Enums"]["publish_provider"]
+            | null;
           published_at?: string | null;
           publishing_started_at?: string | null;
           scheduled_at: string;
@@ -880,17 +932,22 @@ export type Database = {
           caption_provider?: string | null;
           created_at?: string;
           created_by?: string | null;
+          external_post_id?: string | null;
           format?: Database["public"]["Enums"]["post_format"];
           id?: string;
           ig_account_id?: string;
           ig_container_id?: string | null;
           ig_media_id?: string | null;
           is_ai_generated?: boolean;
+          last_checked_at?: string | null;
           last_error?: string | null;
           media_provider?: string | null;
           next_attempt_at?: string | null;
           origin?: Database["public"]["Enums"]["post_origin"];
           permalink?: string | null;
+          publish_provider?:
+            | Database["public"]["Enums"]["publish_provider"]
+            | null;
           published_at?: string | null;
           publishing_started_at?: string | null;
           scheduled_at?: string;
@@ -953,6 +1010,47 @@ export type Database = {
     };
     Functions: {
       accept_invitation: { Args: { p_token: string }; Returns: string };
+      claim_awaiting_confirmation: {
+        Args: { p_every?: string; p_limit?: number };
+        Returns: {
+          approved_at: string | null;
+          approved_by: string | null;
+          attempts: number;
+          caption: string | null;
+          caption_provider: string | null;
+          created_at: string;
+          created_by: string | null;
+          external_post_id: string | null;
+          format: Database["public"]["Enums"]["post_format"];
+          id: string;
+          ig_account_id: string;
+          ig_container_id: string | null;
+          ig_media_id: string | null;
+          is_ai_generated: boolean;
+          last_checked_at: string | null;
+          last_error: string | null;
+          media_provider: string | null;
+          next_attempt_at: string | null;
+          origin: Database["public"]["Enums"]["post_origin"];
+          permalink: string | null;
+          publish_provider:
+            | Database["public"]["Enums"]["publish_provider"]
+            | null;
+          published_at: string | null;
+          publishing_started_at: string | null;
+          scheduled_at: string;
+          status: Database["public"]["Enums"]["post_status"];
+          tenant_id: string;
+          theme: string;
+          updated_at: string;
+        }[];
+        SetofOptions: {
+          from: "*";
+          to: "posts";
+          isOneToOne: false;
+          isSetofReturn: true;
+        };
+      };
       claim_due_posts: {
         Args: { p_limit?: number };
         Returns: {
@@ -963,17 +1061,22 @@ export type Database = {
           caption_provider: string | null;
           created_at: string;
           created_by: string | null;
+          external_post_id: string | null;
           format: Database["public"]["Enums"]["post_format"];
           id: string;
           ig_account_id: string;
           ig_container_id: string | null;
           ig_media_id: string | null;
           is_ai_generated: boolean;
+          last_checked_at: string | null;
           last_error: string | null;
           media_provider: string | null;
           next_attempt_at: string | null;
           origin: Database["public"]["Enums"]["post_origin"];
           permalink: string | null;
+          publish_provider:
+            | Database["public"]["Enums"]["publish_provider"]
+            | null;
           published_at: string | null;
           publishing_started_at: string | null;
           scheduled_at: string;
@@ -990,6 +1093,10 @@ export type Database = {
         };
       };
       delete_ig_token: { Args: { p_account: string }; Returns: undefined };
+      delete_metricool_connection: {
+        Args: { p_tenant: string };
+        Returns: undefined;
+      };
       finish_publish: {
         Args: {
           p_error?: string;
@@ -1019,6 +1126,13 @@ export type Database = {
       };
       is_platform_admin: { Args: Record<PropertyKey, never>; Returns: boolean };
       read_ig_token: { Args: { p_account: string }; Returns: string };
+      read_metricool_credentials: {
+        Args: { p_tenant: string };
+        Returns: {
+          token: string;
+          user_id: string;
+        }[];
+      };
       release_stuck_publishing: {
         Args: { p_older_than?: string };
         Returns: number;
@@ -1027,6 +1141,14 @@ export type Database = {
         Args: { p_approve: boolean; p_note?: string; p_post: string };
         Returns: Database["public"]["Enums"]["post_status"];
       };
+      set_external_post: {
+        Args: {
+          p_external_id: string;
+          p_post: string;
+          p_provider: Database["public"]["Enums"]["publish_provider"];
+        };
+        Returns: undefined;
+      };
       set_ig_container: {
         Args: { p_container: string; p_post: string };
         Returns: undefined;
@@ -1034,6 +1156,15 @@ export type Database = {
       storage_tenant: { Args: { p_name: string }; Returns: string };
       store_ig_token: {
         Args: { p_account: string; p_expires_at: string; p_token: string };
+        Returns: undefined;
+      };
+      store_metricool_token: {
+        Args: {
+          p_actor?: string;
+          p_tenant: string;
+          p_token: string;
+          p_user_id: string;
+        };
         Returns: undefined;
       };
       tenant_members: {
@@ -1073,6 +1204,7 @@ export type Database = {
         | "published"
         | "failed"
         | "paused";
+      publish_provider: "meta" | "metricool";
       tenant_status: "active" | "suspended";
     };
     CompositeTypes: {
@@ -1226,6 +1358,7 @@ export const Constants = {
         "failed",
         "paused",
       ],
+      publish_provider: ["meta", "metricool"],
       tenant_status: ["active", "suspended"],
     },
   },

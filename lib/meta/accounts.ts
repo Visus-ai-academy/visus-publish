@@ -15,7 +15,7 @@ export type ConnectResult = { ok: true; accountId: string } | { ok: false; reaso
 
 /** Grava a conta conectada e o token no Vault. Sempre filtra pelo tenant do state assinado. */
 export async function connectAccount(db: Db, input: ConnectInput): Promise<ConnectResult> {
-  const { data: existing } = await db
+  let { data: existing } = await db
     .from("ig_accounts")
     .select("id, tenant_id")
     .eq("ig_user_id", input.profile.user_id)
@@ -23,6 +23,27 @@ export async function connectAccount(db: Db, input: ConnectInput): Promise<Conne
 
   // A mesma conta do Instagram não pode estar em dois clientes (SPEC §4).
   if (existing && existing.tenant_id !== input.tenantId) return { ok: false, reason: "other_tenant" };
+
+  // Conta que já publicava pelo Metricool neste cliente: passa a publicar pela Meta,
+  // mantendo posts, histórico e o vínculo com a marca do Metricool.
+  if (!existing) {
+    const { data: viaMetricool } = await db
+      .from("ig_accounts")
+      .select("id")
+      .eq("tenant_id", input.tenantId)
+      .eq("publish_via", "metricool")
+      .ilike("username", input.profile.username)
+      .maybeSingle();
+    if (viaMetricool) {
+      const { error } = await db
+        .from("ig_accounts")
+        .update({ ig_user_id: input.profile.user_id, publish_via: "meta" })
+        .eq("tenant_id", input.tenantId)
+        .eq("id", viaMetricool.id);
+      if (error) return { ok: false, reason: "error" };
+      existing = { id: viaMetricool.id, tenant_id: input.tenantId };
+    }
+  }
 
   const fields = {
     username: input.profile.username,
@@ -103,4 +124,34 @@ export async function refreshExpiringTokens(
     }
   }
   return results;
+}
+
+export type MetricoolAccountInput = { tenantId: string; userId: string; blogId: string; username: string; requireApproval?: boolean };
+
+/** Vincula uma marca do Metricool a este cliente como conta que publica pelo Metricool. */
+export async function linkMetricoolAccount(db: Db, input: MetricoolAccountInput): Promise<ConnectResult> {
+  const username = input.username.trim().replace(/^@/, "");
+  const { data: taken } = await db.from("ig_accounts").select("id, tenant_id").eq("metricool_blog_id", input.blogId).maybeSingle();
+  if (taken && taken.tenant_id !== input.tenantId) return { ok: false, reason: "other_tenant" };
+  if (taken) {
+    const { error } = await db.from("ig_accounts").update({ username, status: "connected" }).eq("tenant_id", input.tenantId).eq("id", taken.id);
+    return error ? { ok: false, reason: "error" } : { ok: true, accountId: taken.id };
+  }
+  const { data, error } = await db
+    .from("ig_accounts")
+    .insert({
+      tenant_id: input.tenantId,
+      // Id provisório: vira o id real do Instagram quando a conta for conectada pela Meta.
+      ig_user_id: `metricool:${input.blogId}`,
+      username,
+      publish_via: "metricool",
+      metricool_blog_id: input.blogId,
+      require_approval: input.requireApproval ?? true,
+      connected_by: input.userId,
+    })
+    .select("id")
+    .single();
+  if (error || !data) return { ok: false, reason: error?.code === "23505" ? "other_tenant" : "error" };
+  await db.from("audit_log").insert({ tenant_id: input.tenantId, actor: input.userId, action: "ig_account.linked_metricool", target: `@${username}` });
+  return { ok: true, accountId: data.id };
 }

@@ -63,25 +63,33 @@ const profileSchema = z
   .object({
     id: z.union([z.number(), z.string()]).optional(),
     blogId: z.union([z.number(), z.string()]).optional(),
+    blog_id: z.union([z.number(), z.string()]).optional(),
     label: z.string().nullish(),
     title: z.string().nullish(),
     instagram: z.string().nullish(),
     instagramUsername: z.string().nullish(),
+    instagram_username: z.string().nullish(),
+    name: z.string().nullish(),
   })
   .passthrough();
 
 export type MetricoolBrand = { blogId: string; label: string; instagram: string | null };
 
 export async function listBrands(cfg: MetricoolConfig, creds: MetricoolCredentials): Promise<MetricoolBrand[]> {
-  const raw = await call(cfg, creds, "GET", "/admin/simpleProfiles");
-  const list = Array.isArray(raw) ? raw : z.object({ data: z.array(z.unknown()) }).parse(raw).data;
+  return parseBrands(await call(cfg, creds, "GET", "/admin/simpleProfiles"));
+}
+
+/** Aceita a lista da API ou do conector: array direto ou em `data`/`brands`. */
+export function parseBrands(raw: unknown): MetricoolBrand[] {
+  const wrapped = z.object({ data: z.array(z.unknown()).optional(), brands: z.array(z.unknown()).optional() }).passthrough().safeParse(raw);
+  const list = Array.isArray(raw) ? raw : wrapped.success ? (wrapped.data.data ?? wrapped.data.brands ?? []) : [];
   return list.flatMap((item) => {
     const p = profileSchema.safeParse(item);
     if (!p.success) return [];
-    const blogId = p.data.blogId ?? p.data.id;
+    const blogId = p.data.blogId ?? p.data.blog_id ?? p.data.id;
     if (blogId === undefined) return [];
-    const ig = p.data.instagram ?? p.data.instagramUsername ?? null;
-    return [{ blogId: String(blogId), label: p.data.label ?? p.data.title ?? `Marca ${blogId}`, instagram: ig ? ig.replace(/^@/, "") : null }];
+    const ig = p.data.instagram ?? p.data.instagramUsername ?? p.data.instagram_username ?? null;
+    return [{ blogId: String(blogId), label: p.data.label ?? p.data.title ?? p.data.name ?? `Marca ${blogId}`, instagram: ig ? ig.replace(/^@/, "") : null }];
   });
 }
 
@@ -137,7 +145,8 @@ export async function schedulePost(cfg: MetricoolConfig, creds: MetricoolCredent
   return String(parsed.data);
 }
 
-export type MetricoolPostStatus = { status: "PENDING" | "PUBLISHING" | "PUBLISHED" | "ERROR" | "UNKNOWN"; publicUrl: string | null; detail: string | null };
+/** NOT_FOUND: o conector não acha mais o post entre os agendados (em geral porque já saiu). */
+export type MetricoolPostStatus = { status: "PENDING" | "PUBLISHING" | "PUBLISHED" | "ERROR" | "UNKNOWN" | "NOT_FOUND"; publicUrl: string | null; detail: string | null };
 
 const providerSchema = z
   .object({

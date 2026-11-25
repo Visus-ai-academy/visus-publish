@@ -4,7 +4,7 @@ import { refreshExpiringTokens } from "@/lib/meta/accounts";
 import { MetaApiError, refreshToken } from "@/lib/meta/client";
 import { getMetaConfig } from "@/lib/meta/config";
 import { metaPort, type MetaPort } from "@/lib/meta/port";
-import { metricoolConfigFromEnv, metricoolPort } from "@/lib/metricool/port";
+import { metricoolEnv, metricoolPort } from "@/lib/metricool/port";
 import { publishDue } from "@/lib/publishing/publisher";
 import { createAdminClient } from "@/lib/supabase/admin";
 
@@ -42,7 +42,7 @@ export async function POST(request: NextRequest, ctx: RouteContext<"/api/jobs/[j
     case "publish-due": {
       // Sem app da Meta configurado, contas da Meta falham com mensagem clara e as do Metricool seguem.
       const meta = cfg ? metaPort(cfg) : unconfiguredMeta;
-      const results = await publishDue({ db, meta, metricool: metricoolPort(metricoolConfigFromEnv()) });
+      const results = await publishDue({ db, meta, metricool: metricoolPort(metricoolEnv()) });
       return NextResponse.json({ processed: results.length, results });
     }
     case "refresh-tokens": {

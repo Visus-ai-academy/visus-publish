@@ -1,10 +1,4 @@
-export type Json =
-  | string
-  | number
-  | boolean
-  | null
-  | { [key: string]: Json | undefined }
-  | Json[];
+export type Json = string | number | boolean | null | { [key: string]: Json | undefined } | Json[];
 
 export type Database = {
   graphql_public: {
@@ -15,15 +9,7 @@ export type Database = {
       [_ in never]: never;
     };
     Functions: {
-      graphql: {
-        Args: {
-          extensions?: Json;
-          operationName?: string;
-          query?: string;
-          variables?: Json;
-        };
-        Returns: Json;
-      };
+      graphql: { Args: { extensions?: Json; operationName?: string; query?: string; variables?: Json }; Returns: Json };
     };
     Enums: {
       [_ in never]: never;
@@ -707,26 +693,44 @@ export type Database = {
       };
       metricool_connections: {
         Row: {
+          access_expires_at: string | null;
+          auth_mode: string;
           connected_by: string | null;
           created_at: string;
-          metricool_user_id: string;
+          mcp_tools: Json | null;
+          metricool_user_id: string | null;
+          oauth_client_id: string | null;
+          oauth_client_secret_id: string | null;
+          refresh_secret_id: string | null;
           tenant_id: string;
           token_secret_id: string | null;
           updated_at: string;
         };
         ComputedFields: never;
         Insert: {
+          access_expires_at?: string | null;
+          auth_mode?: string;
           connected_by?: string | null;
           created_at?: string;
-          metricool_user_id: string;
+          mcp_tools?: Json | null;
+          metricool_user_id?: string | null;
+          oauth_client_id?: string | null;
+          oauth_client_secret_id?: string | null;
+          refresh_secret_id?: string | null;
           tenant_id: string;
           token_secret_id?: string | null;
           updated_at?: string;
         };
         Update: {
+          access_expires_at?: string | null;
+          auth_mode?: string;
           connected_by?: string | null;
           created_at?: string;
-          metricool_user_id?: string;
+          mcp_tools?: Json | null;
+          metricool_user_id?: string | null;
+          oauth_client_id?: string | null;
+          oauth_client_secret_id?: string | null;
+          refresh_secret_id?: string | null;
           tenant_id?: string;
           token_secret_id?: string | null;
           updated_at?: string;
@@ -880,9 +884,7 @@ export type Database = {
           next_attempt_at: string | null;
           origin: Database["public"]["Enums"]["post_origin"];
           permalink: string | null;
-          publish_provider:
-            | Database["public"]["Enums"]["publish_provider"]
-            | null;
+          publish_provider: Database["public"]["Enums"]["publish_provider"] | null;
           published_at: string | null;
           publishing_started_at: string | null;
           scheduled_at: string;
@@ -913,9 +915,7 @@ export type Database = {
           next_attempt_at?: string | null;
           origin?: Database["public"]["Enums"]["post_origin"];
           permalink?: string | null;
-          publish_provider?:
-            | Database["public"]["Enums"]["publish_provider"]
-            | null;
+          publish_provider?: Database["public"]["Enums"]["publish_provider"] | null;
           published_at?: string | null;
           publishing_started_at?: string | null;
           scheduled_at: string;
@@ -945,9 +945,7 @@ export type Database = {
           next_attempt_at?: string | null;
           origin?: Database["public"]["Enums"]["post_origin"];
           permalink?: string | null;
-          publish_provider?:
-            | Database["public"]["Enums"]["publish_provider"]
-            | null;
+          publish_provider?: Database["public"]["Enums"]["publish_provider"] | null;
           published_at?: string | null;
           publishing_started_at?: string | null;
           scheduled_at?: string;
@@ -1009,6 +1007,8 @@ export type Database = {
       [_ in never]: never;
     };
     Functions: {
+      _drop_secret: { Args: { p_id: string }; Returns: undefined };
+      _put_secret: { Args: { p_id: string; p_name: string; p_value: string }; Returns: string };
       accept_invitation: { Args: { p_token: string }; Returns: string };
       claim_awaiting_confirmation: {
         Args: { p_every?: string; p_limit?: number };
@@ -1033,9 +1033,7 @@ export type Database = {
           next_attempt_at: string | null;
           origin: Database["public"]["Enums"]["post_origin"];
           permalink: string | null;
-          publish_provider:
-            | Database["public"]["Enums"]["publish_provider"]
-            | null;
+          publish_provider: Database["public"]["Enums"]["publish_provider"] | null;
           published_at: string | null;
           publishing_started_at: string | null;
           scheduled_at: string;
@@ -1074,9 +1072,7 @@ export type Database = {
           next_attempt_at: string | null;
           origin: Database["public"]["Enums"]["post_origin"];
           permalink: string | null;
-          publish_provider:
-            | Database["public"]["Enums"]["publish_provider"]
-            | null;
+          publish_provider: Database["public"]["Enums"]["publish_provider"] | null;
           published_at: string | null;
           publishing_started_at: string | null;
           scheduled_at: string;
@@ -1093,28 +1089,12 @@ export type Database = {
         };
       };
       delete_ig_token: { Args: { p_account: string }; Returns: undefined };
-      delete_metricool_connection: {
-        Args: { p_tenant: string };
-        Returns: undefined;
-      };
+      delete_metricool_connection: { Args: { p_tenant: string }; Returns: undefined };
       finish_publish: {
-        Args: {
-          p_error?: string;
-          p_ig_media_id?: string;
-          p_outcome: string;
-          p_permalink?: string;
-          p_post: string;
-          p_retry_at?: string;
-        };
+        Args: { p_error?: string; p_ig_media_id?: string; p_outcome: string; p_permalink?: string; p_post: string; p_retry_at?: string };
         Returns: Database["public"]["Enums"]["post_status"];
       };
-      has_tenant_role: {
-        Args: {
-          roles?: Database["public"]["Enums"]["member_role"][];
-          t: string;
-        };
-        Returns: boolean;
-      };
+      has_tenant_role: { Args: { roles?: Database["public"]["Enums"]["member_role"][]; t: string }; Returns: boolean };
       invitation_preview: {
         Args: { p_token: string };
         Returns: {
@@ -1129,44 +1109,27 @@ export type Database = {
       read_metricool_credentials: {
         Args: { p_tenant: string };
         Returns: {
+          auth_mode: string;
+          client_id: string;
+          client_secret: string;
+          expires_at: string;
+          refresh_token: string;
           token: string;
           user_id: string;
         }[];
       };
-      release_stuck_publishing: {
-        Args: { p_older_than?: string };
-        Returns: number;
-      };
-      review_post: {
-        Args: { p_approve: boolean; p_note?: string; p_post: string };
-        Returns: Database["public"]["Enums"]["post_status"];
-      };
-      set_external_post: {
-        Args: {
-          p_external_id: string;
-          p_post: string;
-          p_provider: Database["public"]["Enums"]["publish_provider"];
-        };
-        Returns: undefined;
-      };
-      set_ig_container: {
-        Args: { p_container: string; p_post: string };
-        Returns: undefined;
-      };
+      release_stuck_publishing: { Args: { p_older_than?: string }; Returns: number };
+      review_post: { Args: { p_approve: boolean; p_note?: string; p_post: string }; Returns: Database["public"]["Enums"]["post_status"] };
+      set_external_post: { Args: { p_external_id: string; p_post: string; p_provider: Database["public"]["Enums"]["publish_provider"] }; Returns: undefined };
+      set_ig_container: { Args: { p_container: string; p_post: string }; Returns: undefined };
+      set_metricool_tools: { Args: { p_tenant: string; p_tools: Json }; Returns: undefined };
       storage_tenant: { Args: { p_name: string }; Returns: string };
-      store_ig_token: {
-        Args: { p_account: string; p_expires_at: string; p_token: string };
+      store_ig_token: { Args: { p_account: string; p_expires_at: string; p_token: string }; Returns: undefined };
+      store_metricool_oauth: {
+        Args: { p_access: string; p_actor?: string; p_client_id: string; p_client_secret?: string; p_expires_at?: string; p_refresh?: string; p_tenant: string };
         Returns: undefined;
       };
-      store_metricool_token: {
-        Args: {
-          p_actor?: string;
-          p_tenant: string;
-          p_token: string;
-          p_user_id: string;
-        };
-        Returns: undefined;
-      };
+      store_metricool_token: { Args: { p_actor?: string; p_tenant: string; p_token: string; p_user_id: string }; Returns: undefined };
       tenant_members: {
         Args: { p_tenant: string };
         Returns: {
@@ -1176,14 +1139,7 @@ export type Database = {
           user_id: string;
         }[];
       };
-      transition_post: {
-        Args: {
-          p_note?: string;
-          p_post: string;
-          p_to: Database["public"]["Enums"]["post_status"];
-        };
-        Returns: Database["public"]["Enums"]["post_status"];
-      };
+      transition_post: { Args: { p_note?: string; p_post: string; p_to: Database["public"]["Enums"]["post_status"] }; Returns: Database["public"]["Enums"]["post_status"] };
     };
     Enums: {
       ai_task: "caption" | "image" | "video" | "analysis";
@@ -1193,17 +1149,7 @@ export type Database = {
       member_role: "admin" | "editor" | "approver" | "viewer";
       post_format: "image" | "carousel" | "reels" | "story";
       post_origin: "ai" | "upload";
-      post_status:
-        | "planned"
-        | "generating"
-        | "generation_failed"
-        | "pending_approval"
-        | "rejected"
-        | "scheduled"
-        | "publishing"
-        | "published"
-        | "failed"
-        | "paused";
+      post_status: "planned" | "generating" | "generation_failed" | "pending_approval" | "rejected" | "scheduled" | "publishing" | "published" | "failed" | "paused";
       publish_provider: "meta" | "metricool";
       tenant_status: "active" | "suspended";
     };
@@ -1215,34 +1161,23 @@ export type Database = {
 
 type DatabaseWithoutInternals = Omit<Database, "__InternalSupabase">;
 
-type DefaultSchema = DatabaseWithoutInternals[Extract<
-  keyof Database,
-  "public"
->];
+type DefaultSchema = DatabaseWithoutInternals[Extract<keyof Database, "public">];
 
 export type Tables<
-  DefaultSchemaTableNameOrOptions extends
-    | keyof (DefaultSchema["Tables"] & DefaultSchema["Views"])
-    | { schema: keyof DatabaseWithoutInternals },
+  DefaultSchemaTableNameOrOptions extends keyof (DefaultSchema["Tables"] & DefaultSchema["Views"]) | { schema: keyof DatabaseWithoutInternals },
   TableName extends DefaultSchemaTableNameOrOptions extends {
     schema: keyof DatabaseWithoutInternals;
   }
-    ? keyof (DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"] &
-        DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Views"])
+    ? keyof (DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"] & DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Views"])
     : never = never,
-> = DefaultSchemaTableNameOrOptions extends {
-  schema: keyof DatabaseWithoutInternals;
-}
-  ? (DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"] &
-      DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Views"])[TableName] extends {
+> = DefaultSchemaTableNameOrOptions extends { schema: keyof DatabaseWithoutInternals }
+  ? (DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"] & DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Views"])[TableName] extends {
       Row: infer R;
     }
     ? R
     : never
-  : DefaultSchemaTableNameOrOptions extends keyof (DefaultSchema["Tables"] &
-        DefaultSchema["Views"])
-    ? (DefaultSchema["Tables"] &
-        DefaultSchema["Views"])[DefaultSchemaTableNameOrOptions] extends {
+  : DefaultSchemaTableNameOrOptions extends keyof (DefaultSchema["Tables"] & DefaultSchema["Views"])
+    ? (DefaultSchema["Tables"] & DefaultSchema["Views"])[DefaultSchemaTableNameOrOptions] extends {
         Row: infer R;
       }
       ? R
@@ -1250,17 +1185,13 @@ export type Tables<
     : never;
 
 export type TablesInsert<
-  DefaultSchemaTableNameOrOptions extends
-    | keyof DefaultSchema["Tables"]
-    | { schema: keyof DatabaseWithoutInternals },
+  DefaultSchemaTableNameOrOptions extends keyof DefaultSchema["Tables"] | { schema: keyof DatabaseWithoutInternals },
   TableName extends DefaultSchemaTableNameOrOptions extends {
     schema: keyof DatabaseWithoutInternals;
   }
     ? keyof DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"]
     : never = never,
-> = DefaultSchemaTableNameOrOptions extends {
-  schema: keyof DatabaseWithoutInternals;
-}
+> = DefaultSchemaTableNameOrOptions extends { schema: keyof DatabaseWithoutInternals }
   ? DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"][TableName] extends {
       Insert: infer I;
     }
@@ -1275,17 +1206,13 @@ export type TablesInsert<
     : never;
 
 export type TablesUpdate<
-  DefaultSchemaTableNameOrOptions extends
-    | keyof DefaultSchema["Tables"]
-    | { schema: keyof DatabaseWithoutInternals },
+  DefaultSchemaTableNameOrOptions extends keyof DefaultSchema["Tables"] | { schema: keyof DatabaseWithoutInternals },
   TableName extends DefaultSchemaTableNameOrOptions extends {
     schema: keyof DatabaseWithoutInternals;
   }
     ? keyof DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"]
     : never = never,
-> = DefaultSchemaTableNameOrOptions extends {
-  schema: keyof DatabaseWithoutInternals;
-}
+> = DefaultSchemaTableNameOrOptions extends { schema: keyof DatabaseWithoutInternals }
   ? DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"][TableName] extends {
       Update: infer U;
     }
@@ -1300,34 +1227,26 @@ export type TablesUpdate<
     : never;
 
 export type Enums<
-  DefaultSchemaEnumNameOrOptions extends
-    | keyof DefaultSchema["Enums"]
-    | { schema: keyof DatabaseWithoutInternals },
+  DefaultSchemaEnumNameOrOptions extends keyof DefaultSchema["Enums"] | { schema: keyof DatabaseWithoutInternals },
   EnumName extends DefaultSchemaEnumNameOrOptions extends {
     schema: keyof DatabaseWithoutInternals;
   }
     ? keyof DatabaseWithoutInternals[DefaultSchemaEnumNameOrOptions["schema"]]["Enums"]
     : never = never,
-> = DefaultSchemaEnumNameOrOptions extends {
-  schema: keyof DatabaseWithoutInternals;
-}
+> = DefaultSchemaEnumNameOrOptions extends { schema: keyof DatabaseWithoutInternals }
   ? DatabaseWithoutInternals[DefaultSchemaEnumNameOrOptions["schema"]]["Enums"][EnumName]
   : DefaultSchemaEnumNameOrOptions extends keyof DefaultSchema["Enums"]
     ? DefaultSchema["Enums"][DefaultSchemaEnumNameOrOptions]
     : never;
 
 export type CompositeTypes<
-  PublicCompositeTypeNameOrOptions extends
-    | keyof DefaultSchema["CompositeTypes"]
-    | { schema: keyof DatabaseWithoutInternals },
+  PublicCompositeTypeNameOrOptions extends keyof DefaultSchema["CompositeTypes"] | { schema: keyof DatabaseWithoutInternals },
   CompositeTypeName extends PublicCompositeTypeNameOrOptions extends {
     schema: keyof DatabaseWithoutInternals;
   }
     ? keyof DatabaseWithoutInternals[PublicCompositeTypeNameOrOptions["schema"]]["CompositeTypes"]
     : never = never,
-> = PublicCompositeTypeNameOrOptions extends {
-  schema: keyof DatabaseWithoutInternals;
-}
+> = PublicCompositeTypeNameOrOptions extends { schema: keyof DatabaseWithoutInternals }
   ? DatabaseWithoutInternals[PublicCompositeTypeNameOrOptions["schema"]]["CompositeTypes"][CompositeTypeName]
   : PublicCompositeTypeNameOrOptions extends keyof DefaultSchema["CompositeTypes"]
     ? DefaultSchema["CompositeTypes"][PublicCompositeTypeNameOrOptions]
@@ -1346,18 +1265,7 @@ export const Constants = {
       member_role: ["admin", "editor", "approver", "viewer"],
       post_format: ["image", "carousel", "reels", "story"],
       post_origin: ["ai", "upload"],
-      post_status: [
-        "planned",
-        "generating",
-        "generation_failed",
-        "pending_approval",
-        "rejected",
-        "scheduled",
-        "publishing",
-        "published",
-        "failed",
-        "paused",
-      ],
+      post_status: ["planned", "generating", "generation_failed", "pending_approval", "rejected", "scheduled", "publishing", "published", "failed", "paused"],
       publish_provider: ["meta", "metricool"],
       tenant_status: ["active", "suspended"],
     },

@@ -53,13 +53,15 @@ app/(auth)/…                    login, convite
 app/[tenant]/calendario|planejamento|aprovacoes|criativos|insights|contas|ia|equipe
 app/admin/clientes
 app/api/meta/oauth/start|callback  OAuth do Instagram (state assinado + nonce em cookie)
+app/api/metricool/oauth/start|callback  login do conector do Metricool (PKCE, registro dinâmico)
 app/api/jobs/[job]              rotinas chamadas pelo agendador (publish-due, refresh-tokens); ver docs/OPERACAO.md
 lib/supabase/{server,client}.ts
 lib/tenant.ts                   resolve tenant ativo (cookie vp_tenant) e valida membership
 lib/posts/transitions.ts        máquina de estados (chama transition_post / review_post no banco)
 lib/invitations/                convites (token aleatório; banco guarda só sha256)
 lib/meta/                       cliente da Instagram API (container, publish, insights, tokens), contas e state do OAuth
-lib/metricool/                  cliente da API do Metricool (provedor inicial; cada conta escolhe em ig_accounts.publish_via)
+lib/metricool/                  Metricool (provedor inicial; cada conta escolhe em ig_accounts.publish_via): API REST (client.ts)
+                                ou conector MCP com OAuth, que funciona no plano Free (mcp.ts, oauth.ts, connector.ts)
 lib/publishing/publisher.ts     publicação: claim com lock, limite da Meta, container salvo antes do publish, retentativas;
                                 pelo Metricool: envia, guarda external_post_id e confirma depois (sem duplicar)
 lib/ai/providers/               openai, gemini, gemini-image, canva, higgsfield, veo (interface única)

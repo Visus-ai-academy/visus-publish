@@ -4,8 +4,9 @@ import { EmptyState, ErrorNote } from "@/components/ui/states";
 import { Notice } from "@/components/ui/status";
 import { can } from "@/lib/auth/permissions";
 import { getMetaConfig } from "@/lib/meta/config";
-import { listBrands, type MetricoolBrand } from "@/lib/metricool/client";
-import { metricoolConfigFromEnv } from "@/lib/metricool/port";
+import { loadMetricoolAuth } from "@/lib/metricool/auth";
+import type { MetricoolBrand } from "@/lib/metricool/client";
+import { listBrandsWith, metricoolEnv } from "@/lib/metricool/port";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { isPlatformAdmin, resolveTenant } from "@/lib/tenant";
 import { disconnect, setApprovalMode } from "./actions";
@@ -18,6 +19,10 @@ const ERRORS: Record<string, string> = {
   cancelado: "A conexão foi cancelada no Instagram.",
   outro_cliente: "Esta conta do Instagram já está conectada em outro cliente.",
   falha_meta: "A Meta não confirmou a conexão. Tente de novo em alguns minutos.",
+  mc_sem_permissao: "Só a equipe da Visus conecta o Metricool.",
+  mc_cancelado: "O login no Metricool foi cancelado.",
+  mc_expirado: "O login no Metricool demorou demais. Tente de novo.",
+  mc_falha: "O Metricool não confirmou o login. Tente de novo em alguns minutos.",
 };
 
 const STATUS = {
@@ -39,7 +44,7 @@ export default async function AccountsPage({ params, searchParams }: PageProps<"
       .select("id, username, name, status, require_approval, token_expires_at, publish_via")
       .eq("tenant_id", tenant.id)
       .order("username"),
-    supabase.from("metricool_connections").select("metricool_user_id, updated_at").eq("tenant_id", tenant.id).maybeSingle(),
+    supabase.from("metricool_connections").select("auth_mode, metricool_user_id, updated_at").eq("tenant_id", tenant.id).maybeSingle(),
     isPlatformAdmin(),
   ]);
   const metaReady = getMetaConfig() !== null;
@@ -48,14 +53,11 @@ export default async function AccountsPage({ params, searchParams }: PageProps<"
   let brands: MetricoolBrand[] = [];
   let brandsError: string | null = null;
   if (platformAdmin && mcConn) {
-    const { data: creds } = await createAdminClient().rpc("read_metricool_credentials", { p_tenant: tenant.id });
-    const c = creds?.[0];
-    if (c) {
-      try {
-        brands = await listBrands(metricoolConfigFromEnv(), { userId: c.user_id, token: c.token });
-      } catch (e) {
-        brandsError = (e as Error).message;
-      }
+    try {
+      const auth = await loadMetricoolAuth(createAdminClient(), tenant.id);
+      if (auth) brands = await listBrandsWith(metricoolEnv(), auth);
+    } catch (e) {
+      brandsError = (e as Error).message;
     }
   }
 
@@ -78,6 +80,7 @@ export default async function AccountsPage({ params, searchParams }: PageProps<"
       />
       <div className="flex max-w-[1040px] flex-col gap-6">
         {typeof sp.conectada === "string" ? <Notice tone="success">@{sp.conectada} conectada.</Notice> : null}
+        {sp.metricool === "ok" ? <Notice tone="success">Metricool conectado. Agora vincule a marca de cada conta.</Notice> : null}
         {errorKey ? <Notice tone="danger">{ERRORS[errorKey] ?? "Não foi possível conectar a conta."}</Notice> : null}
 
         {platformAdmin || mcConn ? (
@@ -89,7 +92,9 @@ export default async function AccountsPage({ params, searchParams }: PageProps<"
                 </h2>
                 <p className="mt-1 text-text-2">
                   {mcConn
-                    ? `Conectado (userId ${mcConn.metricool_user_id}). Contas vinculadas a uma marca publicam pelo Metricool até a Meta ser liberada.`
+                    ? mcConn.auth_mode === "oauth"
+                      ? "Conectado pelo login do Metricool (funciona no plano Free, até 20 posts por mês). Contas vinculadas a uma marca publicam pelo Metricool."
+                      : `Conectado pela API (userId ${mcConn.metricool_user_id}). Contas vinculadas a uma marca publicam pelo Metricool.`
                     : "Enquanto o app da Meta não é liberado, as contas podem publicar pelo Metricool."}
                 </p>
               </div>
@@ -101,7 +106,22 @@ export default async function AccountsPage({ params, searchParams }: PageProps<"
             </div>
             {platformAdmin ? (
               <>
-                <MetricoolCredentialsForm slug={tenant.slug} connected={!!mcConn} />
+                <div className="flex flex-wrap items-center gap-3">
+                  {/* Link comum: sai do app para o login do Metricool */}
+                  <a
+                    href={`/api/metricool/oauth/start?tenant=${tenant.slug}`}
+                    className="inline-flex h-10 items-center rounded-md bg-primary px-4 font-semibold text-on-primary transition-transform duration-150 hover:bg-[#2a2d34] active:scale-[.98]"
+                  >
+                    {mcConn?.auth_mode === "oauth" ? "Entrar de novo no Metricool" : "Entrar com o Metricool"}
+                  </a>
+                  <p className="text-[13px] text-muted-fg">Qualquer plano, inclusive o Free.</p>
+                </div>
+                <details className="rounded-md border border-border p-3">
+                  <summary className="cursor-pointer font-medium">Usar o token da API (planos Advanced ou Custom)</summary>
+                  <div className="mt-3">
+                    <MetricoolCredentialsForm slug={tenant.slug} connected={mcConn?.auth_mode === "api_token"} />
+                  </div>
+                </details>
                 {mcConn ? (
                   brandsError ? (
                     <ErrorNote>{brandsError}</ErrorNote>

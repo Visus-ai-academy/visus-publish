@@ -3,8 +3,8 @@
 import { revalidatePath } from "next/cache";
 import { z } from "zod";
 import { linkMetricoolAccount } from "@/lib/meta/accounts";
-import { listBrands } from "@/lib/metricool/client";
-import { metricoolConfigFromEnv } from "@/lib/metricool/port";
+import { loadMetricoolAuth } from "@/lib/metricool/auth";
+import { listBrandsWith, metricoolEnv } from "@/lib/metricool/port";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { isPlatformAdmin, resolveTenant } from "@/lib/tenant";
 
@@ -33,7 +33,7 @@ export async function saveMetricool(slug: string, _: McState, formData: FormData
   if (!parsed.success) return { error: parsed.error.issues[0].message };
 
   try {
-    await listBrands(metricoolConfigFromEnv(), parsed.data); // confere o token antes de guardar
+    await listBrandsWith(metricoolEnv(), parsed.data); // confere o token antes de guardar
   } catch (e) {
     return { error: (e as Error).message || "O Metricool recusou o token." };
   }
@@ -79,13 +79,11 @@ export async function linkBrand(slug: string, _: McState, formData: FormData): P
   if (!parsed.success) return { error: parsed.error.issues[0].message };
 
   const db = createAdminClient();
-  const { data: creds } = await db.rpc("read_metricool_credentials", { p_tenant: ctx.tenant.id });
-  const c = creds?.[0];
-  if (!c) return { error: "Conecte o Metricool primeiro." };
-
-  // Só marcas que este token enxerga
+  // Só marcas que esta conexão enxerga
   try {
-    const brands = await listBrands(metricoolConfigFromEnv(), { userId: c.user_id, token: c.token });
+    const auth = await loadMetricoolAuth(db, ctx.tenant.id);
+    if (!auth) return { error: "Conecte o Metricool primeiro." };
+    const brands = await listBrandsWith(metricoolEnv(), auth);
     if (!brands.some((b) => b.blogId === parsed.data.blogId)) return { error: "Esta marca não aparece no Metricool conectado." };
   } catch (e) {
     return { error: (e as Error).message };

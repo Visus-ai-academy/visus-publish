@@ -4,9 +4,14 @@
 
 Cada conta do Instagram publica por um provedor (`ig_accounts.publish_via`): `metricool` ou `meta`. Sem o app da Meta configurado, o app funciona só com o Metricool.
 
-1. No Metricool, a API exige plano **Advanced** ou **Custom**. Em Configurações da conta → API, copie o **userId** e o **token**.
-2. Entre no Visus Publish como admin da plataforma, abra o cliente → **Contas do Instagram** → "Publicação pelo Metricool" e cole userId e token. O app confere o token na hora (lista as marcas) e guarda no Vault. Nunca mande o token por chat ou e-mail.
-3. Ainda nessa tela, escolha a marca do Metricool, confira o @ do Instagram e se a conta pede aprovação, e clique em **Adicionar conta**. Uma marca só pode estar em um cliente.
+Há dois jeitos de conectar o Metricool de um cliente (tela **Contas do Instagram** → "Publicação pelo Metricool", só para admin da plataforma):
+
+- **Entrar com o Metricool (conector, qualquer plano, inclusive Free):** o app usa o servidor MCP oficial (`https://ai.metricool.com/mcp`) com o login do Metricool (OAuth). No plano Free o Metricool limita a **20 posts agendados por mês**. Bom para a fase de teste.
+- **Token da API (planos Advanced ou Custom):** em Configurações da conta → API, copie **userId** e **token** e cole no formulário "Usar o token da API". Sem limite de 20 posts.
+
+Nos dois casos as credenciais ficam no Vault e nunca passam por chat ou e-mail. Depois de conectar, escolha a marca do Metricool, confira o @ do Instagram e se a conta pede aprovação, e clique em **Adicionar conta**. Uma marca só pode estar em um cliente.
+
+Para o login funcionar em produção, defina `APP_URL` com o endereço público do app (o retorno do login é `APP_URL/api/metricool/oauth/callback`).
 
 Como funciona: no horário do post, a rotina `publish-due` manda o post ao Metricool para daqui a 2 minutos no fuso do cliente (com `autoPublish`) e o post fica "Publicando". A cada minuto a rotina consulta o Metricool; quando o Instagram confirma, o post vira "Publicado" com o link. Erro do Metricool → "Falhou" com o motivo. Se em 3 h não houver confirmação, o post vai para "Falhou" pedindo para conferir no Metricool. "Tentar de novo" reaproveita o post já criado no Metricool (nunca publica duas vezes).
 
@@ -15,6 +20,7 @@ Limitações conhecidas do Metricool:
 - o limite de publicações da Meta não é consultado (o Metricool controla);
 - o post sai cerca de 2 minutos depois do horário marcado;
 - a API do Metricool não documenta tudo (tipos POST/STORY, formato de algumas respostas). Confira o primeiro post real de cada formato.
+- pelo conector: o app lê a lista de ferramentas do servidor ao conectar (guardada em `metricool_connections.mcp_tools`) e monta os parâmetros por ela. O conector só lista posts **agendados**; quando o post some da lista depois do horário, o app conclui que saiu e marca "Publicado", sem o link do Instagram. Erro aparece como "Falhou" quando o Metricool o mostra na lista.
 
 **Trocar para a Meta:** quando o app da Meta for liberado (seção 1), o admin do cliente clica em "Conectar conta do Instagram" e entra com a mesma conta. A conta existente passa a publicar pela Meta, sem perder posts nem histórico.
 

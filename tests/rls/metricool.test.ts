@@ -1,7 +1,7 @@
 import { beforeAll, describe, expect, it } from "vitest";
 import { connectAccount, linkMetricoolAccount } from "@/lib/meta/accounts";
-import { MetricoolApiError, type MetricoolCredentials, type MetricoolPostStatus, type ScheduleInput } from "@/lib/metricool/client";
-import type { MetricoolPort } from "@/lib/metricool/port";
+import { MetricoolApiError, type MetricoolPostStatus, type ScheduleInput } from "@/lib/metricool/client";
+import type { MetricoolAuth, MetricoolPort } from "@/lib/metricool/port";
 import type { MetaPort } from "@/lib/meta/port";
 import { publishDue } from "@/lib/publishing/publisher";
 import { createUser, must, ok, service, slug } from "./helpers";
@@ -15,7 +15,7 @@ const noMeta: MetaPort = new Proxy({} as MetaPort, {
 });
 
 function fakeMetricool(status: () => MetricoolPostStatus = () => ({ status: "PENDING", publicUrl: null, detail: null }), over: Partial<MetricoolPort> = {}) {
-  const scheduled: Array<{ creds: MetricoolCredentials; input: ScheduleInput }> = [];
+  const scheduled: Array<{ creds: MetricoolAuth; input: ScheduleInput }> = [];
   const deleted: string[] = [];
   let n = 0;
   const port: MetricoolPort = {
@@ -94,7 +94,7 @@ beforeAll(async () => {
 describe("conexão com o Metricool", () => {
   it("token só no Vault: servidor lê, admin só vê que existe, editor nem isso", async () => {
     const creds = must(await service.rpc("read_metricool_credentials", { p_tenant: tenantA }));
-    expect(creds).toEqual([{ user_id: "111", token: "mc-token-a" }]);
+    expect(creds).toEqual([{ auth_mode: "api_token", user_id: "111", token: "mc-token-a", refresh_token: null, client_id: null, client_secret: null, expires_at: null }]);
     expect((await admin.client.rpc("read_metricool_credentials", { p_tenant: tenantA })).error).not.toBeNull();
 
     const seen = must(await admin.client.from("metricool_connections").select("*").eq("tenant_id", tenantA));
@@ -247,7 +247,7 @@ describe("publicação pelo Metricool", () => {
     await duePost({ tenant: tenantB, account: accB });
     const mc = fakeMetricool();
     await publishDue({ db: service, meta: noMeta, metricool: mc.port });
-    expect(mc.scheduled.map((s) => s.creds.token).sort()).toEqual(["mc-token-a", "mc-token-b"]);
+    expect(mc.scheduled.map((s) => ("token" in s.creds ? s.creds.token : s.creds.accessToken)).sort()).toEqual(["mc-token-a", "mc-token-b"]);
   });
 
   it("espera até 3 h pela confirmação antes de desistir", async () => {

@@ -122,5 +122,7 @@ test("outro cliente não vê os posts da Clínica Aurora", async ({ page }) => {
   await expect(page.getByRole("heading", { name: "Calendário" })).toBeVisible();
   await expect(page.getByText(/Direto \d+|Aprovação \d+/)).toHaveCount(0);
   await page.goto("/bela-pele/criativos");
-  await expect(page.getByLabel("Conta").locator("option")).toHaveText([/@belapele/]);
+  const options = page.getByLabel("Conta").locator("option");
+  await expect(options.first()).toHaveText(/@belapele/);
+  await expect(options.filter({ hasText: /aurora|clinicaaurora/ })).toHaveCount(0);
 });

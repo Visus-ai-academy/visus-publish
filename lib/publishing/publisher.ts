@@ -2,8 +2,10 @@ import type { SupabaseClient } from "@supabase/supabase-js";
 import type { Database } from "@/lib/supabase/database.types";
 import { MetaApiError, type ContainerInput } from "@/lib/meta/client";
 import type { MetaPort } from "@/lib/meta/port";
-import { MetricoolApiError, type InstagramType, type MetricoolCredentials } from "@/lib/metricool/client";
-import type { MetricoolPort } from "@/lib/metricool/port";
+import { loadMetricoolAuth } from "@/lib/metricool/auth";
+import { MetricoolApiError, type InstagramType } from "@/lib/metricool/client";
+import type { OAuthConfig } from "@/lib/metricool/oauth";
+import type { MetricoolAuth, MetricoolPort } from "@/lib/metricool/port";
 import { utcToZoned } from "@/lib/time";
 
 type Db = SupabaseClient<Database>;
@@ -18,6 +20,8 @@ export type PublishOptions = {
   meta: MetaPort;
   /** Necessário quando alguma conta publica pelo Metricool. */
   metricool?: MetricoolPort;
+  /** Login do conector do Metricool (renovação do token). Os testes apontam para um servidor simulado. */
+  metricoolOAuth?: OAuthConfig;
   batch?: number;
   now?: () => Date;
   sleep?: (ms: number) => Promise<void>;
@@ -243,12 +247,23 @@ const METRICOOL_TYPE: Record<Post["format"], InstagramType> = { image: "POST", c
 /** O Metricool só aceita horário no futuro: entregamos com essa folga e ele publica no ciclo seguinte. */
 const METRICOOL_LEAD_MS = 2 * 60_000;
 
-async function metricoolCreds(db: Db, tenantId: string): Promise<MetricoolCredentials> {
-  const { data } = await db.rpc("read_metricool_credentials", { p_tenant: tenantId });
-  const row = data?.[0];
-  if (!row?.token) throw new PublishFailure("Conecte o Metricool deste cliente na tela Contas do Instagram.", "failed");
-  return { userId: row.user_id, token: row.token };
+async function metricoolCreds(opts: PublishOptions, tenantId: string): Promise<MetricoolAuth> {
+  const auth = await loadMetricoolAuth(opts.db, tenantId, { oauth: opts.metricoolOAuth, now: opts.now?.() });
+  if (!auth) throw new PublishFailure("Conecte o Metricool deste cliente na tela Contas do Instagram.", "failed");
+  return auth;
 }
+
+async function tenantTimezone(db: Db, tenantId: string) {
+  const { data } = await db.from("tenants").select("timezone").eq("id", tenantId).single();
+  return data?.timezone ?? "America/Sao_Paulo";
+}
+
+/**
+ * O conector do Metricool só lista posts agendados: quando o post some da lista depois
+ * do horário, ele saiu. Esperamos esse tempo antes de concluir, para não confundir com
+ * um atraso da própria lista.
+ */
+const NOT_FOUND_GRACE_MS = 5 * 60_000;
 
 function requireMetricool(opts: PublishOptions): MetricoolPort {
   if (!opts.metricool) throw new PublishFailure("Publicação pelo Metricool não está configurada no servidor.", "failed");
@@ -259,13 +274,15 @@ async function publishViaMetricool(opts: PublishOptions, post: Post, blogId: str
   const { db } = opts;
   const metricool = requireMetricool(opts);
   const now = opts.now ?? (() => new Date());
-  const creds = await metricoolCreds(db, post.tenant_id);
+  const creds = await metricoolCreds(opts, post.tenant_id);
+  const tz = await tenantTimezone(db, post.tenant_id);
   const sent = (): PublishResult => ({ postId: post.id, tenantId: post.tenant_id, outcome: "sent" });
 
   // Nova tentativa de um post já entregue: nunca cria outro se o anterior saiu ou ainda vai sair.
   if (post.external_post_id && post.publish_provider === "metricool") {
-    const st = await metricool.getPostStatus(creds, blogId, post.external_post_id);
-    if (st.status === "PUBLISHED") {
+    const st = await metricool.getPostStatus(creds, blogId, post.external_post_id, tz);
+    // Sumiu da lista de agendados: já saiu. Nunca cria outro.
+    if (st.status === "PUBLISHED" || st.status === "NOT_FOUND") {
       await finish(db, post.id, "published", { permalink: st.publicUrl });
       return { postId: post.id, tenantId: post.tenant_id, outcome: "published" };
     }
@@ -293,8 +310,6 @@ async function publishViaMetricool(opts: PublishOptions, post: Post, blogId: str
     }),
   );
 
-  const { data: tenant } = await db.from("tenants").select("timezone").eq("id", post.tenant_id).single();
-  const tz = tenant?.timezone ?? "America/Sao_Paulo";
   const at = utcToZoned(new Date(now().getTime() + METRICOOL_LEAD_MS), tz);
 
   const externalId = await metricool.schedulePost(creds, {
@@ -331,9 +346,11 @@ export async function confirmMetricool(opts: PublishOptions): Promise<PublishRes
         .eq("id", post.ig_account_id)
         .single();
       if (!account?.metricool_blog_id || !post.external_post_id) continue;
-      const creds = await metricoolCreds(db, post.tenant_id);
-      const st = await metricool.getPostStatus(creds, account.metricool_blog_id, post.external_post_id);
-      if (st.status === "PUBLISHED") {
+      const creds = await metricoolCreds(opts, post.tenant_id);
+      const st = await metricool.getPostStatus(creds, account.metricool_blog_id, post.external_post_id, await tenantTimezone(db, post.tenant_id));
+      const now = (opts.now ?? (() => new Date()))().getTime();
+      const startedAt = post.publishing_started_at ? new Date(post.publishing_started_at).getTime() : now;
+      if (st.status === "PUBLISHED" || (st.status === "NOT_FOUND" && now - startedAt >= NOT_FOUND_GRACE_MS)) {
         await finish(db, post.id, "published", { permalink: st.publicUrl });
         out.push({ postId: post.id, tenantId: post.tenant_id, outcome: "published" });
       } else if (st.status === "ERROR") {

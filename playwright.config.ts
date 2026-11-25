@@ -22,6 +22,8 @@ export default defineConfig({
       META_REDIRECT_URI: "http://127.0.0.1:3000/api/meta/oauth/callback",
       META_GRAPH_BASE_URL: "http://127.0.0.1:54399",
       METRICOOL_BASE_URL: "http://127.0.0.1:54398",
+      METRICOOL_MCP_URL: "http://127.0.0.1:54398/mcp",
+      APP_URL: "http://127.0.0.1:3000",
       OAUTH_STATE_SECRET: "e2e-oauth-state-secret-com-32-caracteres",
       CRON_SECRET: "e2e-cron-secret-com-pelo-menos-32-caracteres",
     },

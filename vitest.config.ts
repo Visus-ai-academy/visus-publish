@@ -8,7 +8,8 @@ export default defineConfig({
       { extends: true, test: { name: "unit", include: ["lib/**/*.test.ts"] } },
       {
         extends: true,
-        test: { name: "rls", include: ["tests/rls/**/*.test.ts"], testTimeout: 30_000, hookTimeout: 60_000 },
+        // Um arquivo por vez: os testes de fila mexem em posts vencidos do banco inteiro.
+        test: { name: "rls", include: ["tests/rls/**/*.test.ts"], fileParallelism: false, testTimeout: 30_000, hookTimeout: 60_000 },
       },
     ],
   },

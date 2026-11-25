@@ -219,7 +219,7 @@ describe("papéis dentro do cliente", () => {
 
 describe("status do post só muda pelo domínio", () => {
   async function freshPlanned(client: Client) {
-    return must(
+    const post = must(
       await client
         .from("posts")
         .insert({
@@ -232,6 +232,13 @@ describe("status do post só muda pelo domínio", () => {
         .select("id, status, created_by")
         .single(),
     );
+    must(
+      await client
+        .from("post_media")
+        .insert({ tenant_id: tenantA.id, post_id: post.id, kind: "image", storage_path: `${tenantA.id}/${post.id}/a.jpg` })
+        .select(),
+    );
+    return post;
   }
 
   it("editor cria post como planned e created_by é ele", async () => {

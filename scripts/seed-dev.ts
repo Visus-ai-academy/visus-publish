@@ -41,6 +41,22 @@ await member(aurora, await user("edu@aurora.local"), "editor");
 await member(aurora, await user("dra.lucia@aurora.local"), "approver");
 await member(belaPele, await user("bia@belapele.local"), "admin");
 
+async function account(tenantId: string, igUserId: string, username: string, requireApproval: boolean) {
+  const { data, error } = await db
+    .from("ig_accounts")
+    .upsert({ tenant_id: tenantId, ig_user_id: igUserId, username, require_approval: requireApproval }, { onConflict: "ig_user_id" })
+    .select("id")
+    .single();
+  if (error) throw error;
+  // Token falso: só funciona com a Meta simulada dos testes.
+  const { error: e } = await db.rpc("store_ig_token", { p_account: data.id, p_token: `dev-token-${username}`, p_expires_at: new Date(Date.now() + 50 * 86_400_000).toISOString() });
+  if (e) throw e;
+}
+
+await account(aurora, "17841400000000001", "clinicaaurora", true);
+await account(aurora, "17841400000000002", "aurora.estetica", false);
+await account(belaPele, "17841400000000003", "belapele", false);
+
 console.log(`Pronto. Senha de todos: ${PASSWORD}
   admin@visus.local       admin da plataforma
   ana@aurora.local        admin da Clínica Aurora

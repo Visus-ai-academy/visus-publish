@@ -1,0 +1,71 @@
+# Operação: Metricool, Meta, variáveis e rotinas
+
+## 0. Metricool (provedor inicial, enquanto o app da Meta não é liberado)
+
+Cada conta do Instagram publica por um provedor (`ig_accounts.publish_via`): `metricool` ou `meta`. Sem o app da Meta configurado, o app funciona só com o Metricool.
+
+1. No Metricool, a API exige plano **Advanced** ou **Custom**. Em Configurações da conta → API, copie o **userId** e o **token**.
+2. Entre no Visus Publish como admin da plataforma, abra o cliente → **Contas do Instagram** → "Publicação pelo Metricool" e cole userId e token. O app confere o token na hora (lista as marcas) e guarda no Vault. Nunca mande o token por chat ou e-mail.
+3. Ainda nessa tela, escolha a marca do Metricool, confira o @ do Instagram e se a conta pede aprovação, e clique em **Adicionar conta**. Uma marca só pode estar em um cliente.
+
+Como funciona: no horário do post, a rotina `publish-due` manda o post ao Metricool para daqui a 2 minutos no fuso do cliente (com `autoPublish`) e o post fica "Publicando". A cada minuto a rotina consulta o Metricool; quando o Instagram confirma, o post vira "Publicado" com o link. Erro do Metricool → "Falhou" com o motivo. Se em 3 h não houver confirmação, o post vai para "Falhou" pedindo para conferir no Metricool. "Tentar de novo" reaproveita o post já criado no Metricool (nunca publica duas vezes).
+
+Limitações conhecidas do Metricool:
+- não envia a marcação de conteúdo gerado por IA (`is_ai_generated`), que só existe na API da Meta;
+- o limite de publicações da Meta não é consultado (o Metricool controla);
+- o post sai cerca de 2 minutos depois do horário marcado;
+- a API do Metricool não documenta tudo (tipos POST/STORY, formato de algumas respostas). Confira o primeiro post real de cada formato.
+
+**Trocar para a Meta:** quando o app da Meta for liberado (seção 1), o admin do cliente clica em "Conectar conta do Instagram" e entra com a mesma conta. A conta existente passa a publicar pela Meta, sem perder posts nem histórico.
+
+
+## 1. App da Meta (uma vez)
+
+1. Em developers.facebook.com, crie um app do tipo **Empresa** e adicione o produto **Instagram** → "API do Instagram com login do Instagram".
+2. Em "Configurar login comercial do Instagram", cadastre a URL de redirecionamento: `https://SEU-DOMINIO/api/meta/oauth/callback` (igual a `META_REDIRECT_URI`).
+3. Copie o **ID do app do Instagram** e a **Chave secreta do app do Instagram** para `META_APP_ID` e `META_APP_SECRET` nas variáveis do servidor (nunca no código, no chat ou em `NEXT_PUBLIC_*`).
+4. Até o App Review ser aprovado (Fase 5), só contas com papel no app funcionam: em "Funções do app" → "Testadores do Instagram", adicione a conta profissional de teste e aceite o convite no Instagram (Configurações → Apps e sites).
+
+## 2. Variáveis do servidor
+
+Veja `.env.example`. `OAUTH_STATE_SECRET` e `CRON_SECRET` são valores aleatórios com 32+ caracteres.
+
+## 3. Rotinas
+
+As rotinas rodam no app em `POST /api/jobs/{rotina}` com `Authorization: Bearer $CRON_SECRET`:
+
+| Rotina | Frequência | O que faz |
+|---|---|---|
+| `publish-due` | a cada minuto | publica posts vencidos (lock com `claim_due_posts`, limite da Meta consultado antes) e confirma os enviados ao Metricool |
+| `refresh-tokens` | 1× por dia | renova tokens da Meta que vencem em menos de 10 dias; falha → conta "Reconectar". Sem app da Meta, não faz nada |
+
+Opção A, pelo próprio Supabase (pg_cron + pg_net). Rode no SQL Editor do projeto, trocando domínio e segredo:
+
+```sql
+create extension if not exists pg_cron;
+create extension if not exists pg_net;
+
+select vault.create_secret('COLE_O_CRON_SECRET', 'cron_secret');
+
+select cron.schedule('publish-due', '* * * * *', $$
+  select net.http_post(
+    url := 'https://SEU-DOMINIO/api/jobs/publish-due',
+    headers := jsonb_build_object('authorization', 'Bearer ' ||
+      (select decrypted_secret from vault.decrypted_secrets where name = 'cron_secret'))
+  );
+$$);
+
+select cron.schedule('refresh-tokens', '0 9 * * *', $$
+  select net.http_post(
+    url := 'https://SEU-DOMINIO/api/jobs/refresh-tokens',
+    headers := jsonb_build_object('authorization', 'Bearer ' ||
+      (select decrypted_secret from vault.decrypted_secrets where name = 'cron_secret'))
+  );
+$$);
+```
+
+Opção B: o cron da hospedagem (por exemplo Vercel Cron) chamando as mesmas URLs com o mesmo cabeçalho.
+
+## 4. Mídia
+
+A Meta (ou o Metricool, que copia o arquivo para ele) baixa a mídia por uma URL assinada do Storage (válida por 6 h) no momento da publicação. O Supabase precisa estar acessível pela internet; o Supabase local não serve para publicar de verdade.

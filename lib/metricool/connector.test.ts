@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, it } from "vitest";
-import { clearToolCache, connectorBrands, connectorSchedule, connectorStatus, scheduleArgs } from "./connector";
+import { clearToolCache, connectorBrands, connectorSchedule, connectorStatus, pickTool, scheduleArgs } from "./connector";
 import { parseRpcBody, type McpTool } from "./mcp";
 import { authorizeUrl, discover, exchangeCode, openFlow, pkce, refreshTokens, registerClient, sealFlow } from "./oauth";
 
@@ -145,5 +145,51 @@ describe("login do conector (OAuth)", () => {
     expect(openFlow(sealed, secret)).toEqual(flow);
     expect(openFlow(sealed, "y".repeat(40))).toBeNull();
     expect(openFlow(sealed.slice(0, -2) + "AA", secret)).toBeNull();
+  });
+});
+
+describe("conector real do Metricool (esquemas lidos do servidor em 25/11)", async () => {
+  const real = (await import("./fixtures/real-tools.json")).default as McpTool[];
+
+  it("acha as marcas no getBrandSettings, com o @ em networksData", async () => {
+    const { cfg, calls } = fakeMcp(real, () => ({
+      data: [{ id: 6358212, userId: 1, label: "Visus_ai", timezone: "America/Sao_Paulo", networksData: { facebookData: "1", instagramData: "visus_ai" } }],
+    }));
+    expect(await connectorBrands(cfg, "tok")).toEqual([{ blogId: "6358212", label: "Visus_ai", instagram: "visus_ai" }]);
+    expect(calls[0].name).toBe("getBrandSettings");
+  });
+
+  it("agenda no createScheduledPost: blogId texto, data com fuso, info em JSON e marcação de IA", async () => {
+    const { cfg, calls } = fakeMcp(real, () => ({ data: { id: 777, uuid: "-123" } }));
+    expect(await connectorSchedule(cfg, "tok", { ...input, aiGenerated: true })).toBe("777");
+    const c = calls[0];
+    expect(c.name).toBe("createScheduledPost");
+    expect(c.args.blogId).toBe("55");
+    expect(c.args.date).toBe("2026-12-01T18:02:00-03:00");
+    expect(typeof c.args.info).toBe("string");
+    expect(JSON.parse(String(c.args.info))).toMatchObject({ text: "Oi", providers: [{ network: "instagram" }], instagramData: { type: "POST", isAiGenerated: true } });
+  });
+
+  it("confere no getScheduledPosts pelo id ou uuid e devolve o link do Instagram", async () => {
+    const published = {
+      id: 338107549,
+      uuid: "-1235",
+      providers: [
+        { network: "facebook", status: "PUBLISHED", publicUrl: "https://facebook.com/x" },
+        { network: "instagram", status: "PUBLISHED", publicUrl: "https://www.instagram.com/p/DZprPSoirwh/" },
+      ],
+    };
+    const { cfg, calls } = fakeMcp(real, () => ({ data: [published] }));
+    expect(await connectorStatus(cfg, "tok", "6358212", "338107549", "America/Sao_Paulo", new Date("2026-11-25T23:00:00Z"))).toMatchObject({
+      status: "PUBLISHED",
+      publicUrl: "https://www.instagram.com/p/DZprPSoirwh/",
+    });
+    expect((await connectorStatus(cfg, "tok", "6358212", "-1235", "America/Sao_Paulo")).status).toBe("PUBLISHED");
+    expect(calls[0].name).toBe("getScheduledPosts");
+    expect(calls[0].args).toMatchObject({ brandId: "6358212", timezone: "America/Sao_Paulo", fromDate: "2026-11-23T00:00:00-03:00", toDate: "2026-11-27T23:59:59-03:00" });
+  });
+
+  it("não usa a ferramenta de revisão no lugar do agendamento", () => {
+    expect(pickTool(real, ["naoExiste"], /^(create|post)_?schedul(?!.*review)/i)?.name).toBe("createScheduledPost");
   });
 });

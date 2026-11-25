@@ -1,0 +1,193 @@
+[
+ {
+  "name": "updateScheduledPost",
+  "inputSchema": {
+   "type": "object",
+   "required": [
+    "id",
+    "uuid",
+    "blogId",
+    "info"
+   ],
+   "properties": {
+    "id": {
+     "type": "string",
+     "description": "Id of the post to update. Get it from the getScheduledPosts tool previous on the conversation. Updating the post assigns it a new id."
+    },
+    "info": {
+     "type": "string",
+     "description": "Data of the post to be scheduled. Should be a json object with the following fields:\nautoPublish: True or False, default is True. Selects the delivery method for the scheduled post, exactly as in the Metricool web app: True publishes it automatically via the API at the scheduled time; False sends a push notification to the user's Metricool mobile app instead, so they complete the publication by hand. It does not skip validation, review, or approval steps.\ndescendants: list with the args of the other posts if it is a thread with the format [args of the second post, args of the third post,...  ], default is empty list if there is no thread.\ndraft: True or False, default is False.\nfirstCommentText: Text of the first comment of the post. Default \"\"\nhasNotReadNotes: True or False, default is False.\nmedia: default is empty list. Accepts public URLs to image or video files. External sources like Google Drive or Dropbox are uploaded to Metricool automatically; for Google Drive, the user must have linked Google Drive in their Metricool account.\nvideoThumbnailUrl: default none. Public URL of a custom jpg, jpeg or png cover image for a video post — no other image format is supported. Accepts the same external sources as media (Google Drive/Dropbox auto-uploaded). Requires a video in media, and applies only when the post includes: Instagram Reel/Trial Reel, TikTok (Business-connected accounts only — silently ignored on personal TikTok accounts), YouTube video or Short (the thumbnail only shows if the channel is verified and YouTube has enabled Shorts thumbnails on that account), LinkedIn, or Facebook Post/Reel (not Story). Outside the TikTok-personal-account case, if these conditions are not met the entire request is rejected with a VIDEO_THUMBNAIL_NOT_APPLICABLE error — omit both fields rather than sending them speculatively.\nvideoCoverMilliseconds: default none. Alternative to videoThumbnailUrl — offset in milliseconds into the video to use as the cover frame instead of a custom image. Same requirements and network applicability as videoThumbnailUrl.\nmediaAltText: default is empty list.\nproviders: always need at least one provider with the format [{\"network\":\"<string>\"}]. Use \"twitter\" for X posts. Use \"gmb\" for Google Business Profile. Valid network values are: twitter, facebook, instagram, linkedin, pinterest, youtube, tiktok, bluesky, threads, gmb. brandInfo, website, brandSummary and smartLinks are analytics-only values (used by the analytics tools) and are NOT valid providers here.\npublicationDate: Date and timezone of the post. The format is {dateTime:\"YYYY-MM-DDTHH:mm:ss\", timezone:IANA identifier}. Use the timezone of the user extracted from the getBrandSettings tool.\nshortener: True or False, default is False.\nsmartLinkData: default is {ids:[]}\ntext: Text of the post. It can be empty on Instagram (every type: the caption is optional) and on Facebook Stories; every other network in the post needs it. Stories have no caption of their own, so: a Story published automatically must not carry text when it is the only network of the post; if EVERY network of the post is a Story the text is not published anywhere, so do not send it; and when a Story is posted alongside a non-Story network the text belongs to that other network and the Story ignores it.\nAlways you need to add the networkData for the posts, as empty if you don't have more information. Only include the networkData for the networks you have in the providers list.\n    The format is \"twitterData\": {\"tags\":[{\"username\": \"string\", \"deleted\": false}]}, Tags is used for tagging people on the images of the post, not hashtags. There could be more than one tag, following the same structure.\n                                \"facebookData\": {\"type\":\"<string>\", \"title\":\"<string>\", \"boost\":<double>, \"boostPayer\":\"<string>\", \"boostBeneficiary\":\"<string>\"},\n                                    Facebook type can be \"POST\", \"REEL\" or \"STORY\"\n                                    Facebook title is only available for Facebook videos (This is separate from the main text of the post).\n                                    Facebook boost, boostPayer, and boostBeneficiary are only included if they are promoted posts.\n                                \"instagramData\": {\"type\": \"<string>\" (default = POST), \"collaborators\":[{username: \"string\", deleted: false}]], \"carouselTags\": {\"<media position>\": [{\"username\": \"<string>\", \"x\": <double>, \"y\": <double>}]}, \"showReelOnFeed\": \"<boolean>\" (default = true), \"boost\":<double>, \"boostPayer\":\"<string>\", \"boostBeneficiary\":\"<string>\", \"audioConfiguration\": {\"audioId\": \"<string>\", \"audioType\": \"<string>\", \"title\": \"<string>\", \"displayArtist\": \"<string>\", \"igUsername\": \"<string>\", \"coverArtworkUrl\": \"<string>\", \"durationMs\": <integer>, \"audioVolume\": <integer>, \"videoVolume\": <integer>}, \"isAiGenerated\": \"<boolean>\" (default = false)},\n                                    Instagram type can be \"POST\", \"REEL\", \"STORY\" or \"TRIAL_REEL\". TRIAL_REEL is an Instagram Trial Reel (visible only to non-followers initially); it requires a video, same as REEL.\n                                    isAiGenerated declares that the post's content was generated or significantly altered by AI, as Instagram requires for such content. Applies to POST, REEL, TRIAL_REEL and STORY; for carousels it is a single flag for the whole post, not per image.\n                                    There could be more than one collaborator, following the same structure.\n                                    carouselTags tags people on the media (Instagram user tags, not hashtags or collaborators). Each key is the 0-based position of the item in media (\"0\" for a single image or a Reel) and holds the people tagged on it, so if you add, remove or reorder media, move each tag list with its media item and drop the tags of removed items. x and y place the tag on an image, from 0.0 to 1.0 measured from the top-left corner (default 0.5, the centre); Reels ignore them. Videos inside a carousel do not support people tags, so the request is rejected if you send them there; Stories only apply them on some Instagram accounts.\n                                    audioConfiguration only applies to REEL/TRIAL_REEL and only on Instagram Business accounts connected to a Facebook Page (otherwise the request is rejected). Only audioId is required. audioId accepts either a known numeric Instagram Audio API id, or a search term (song title/artist) that gets resolved automatically when it matches exactly one catalog result — if it matches none or several, the request is rejected with the list of candidates so you can retry with the exact numeric id. Once resolved, audioType/title/displayArtist/igUsername/coverArtworkUrl/durationMs are filled in automatically from the catalog — do not guess them, anything you send for those fields is discarded and overwritten. audioVolume and videoVolume (0-100, default 100) are the only fields under your control; omit them to keep the account's default.\n                                \"linkedinData\": {\"documentTitle\": \"<string>\", \"publishImagesAsPDF\": \"<boolean>\" (default = false), \"previewIncluded\": \"<boolean>\" (default = true), \"type\": \"<string>\" (default = post), \"poll\": {\"question\": \"<string>\", \"options\": [{\"text\": \"<string>\"}, {\"text\": \"<string>\"}], \"settings\": {\"duration\": \"<string>\"}}},\n                                    Linkedin type can be \"post\" or \"poll\".\n                                    Linkedin documentTitle is the title shown for a document post (a single pdf, ppt, pptx, doc or docx document in media, or images published as a PDF carousel). Setting it does not imply publishImagesAsPDF.\n                                    Linkedin publishImagesAsPDF converts several images into a single PDF carousel. When updating a post, keep the publishImagesAsPDF value returned by getScheduledPosts unless the user explicitly asks to change it; never set it when the media is a document (pdf, ppt, pptx, doc or docx).\n                                    Linkedin poll duration can be \"ONE_DAY\", \"THREE_DAYS\", \"SEVEN_DAYS \" or \"FOURTEEN_DAYS \".\n                                \"pinterestData\": {\"boardId\":\"<string>\", \"pinTitle\":\"<string>\",\"pinLink\":\"<string>\", \"pinNewFormat\":\"<boolean>\", \"isAiGenerated\": \"<boolean>\" (optional field), \"isAiGeneratedPerson\": \"<boolean>\" (optional field)},\n                                    Pinterest boardId must be the numeric Pinterest board ID as a string (e.g. \"1234567890\"). NEVER pass a URL-encoded board name.\n                                    If you only know the board name, pass the exact human-readable name (e.g. \"Baking Ideas\") and it will be resolved automatically when unambiguous.\n                                    isAiGenerated declares that the Pin was created or significantly altered with AI, as Pinterest allows for such content. isAiGeneratedPerson declares that the Pin includes an AI-generated person and requires isAiGenerated to be true. Both apply to image and video Pins. To remove the AI declaration, set both isAiGenerated and isAiGeneratedPerson to false. When updating a post, keep the values returned by getScheduledPosts.\n                                \"youtubeData\": {\"title\": \"<string>\", \"type\": \"<string>\" (default = video), \"privacy\": \"<string>\" (default = public), \"tags\": [ \"<string>\", \"<string>\" ], \"category\": \"<string>\" (optional field), \"madeForKids\": \"<boolean>\", \"isAiGeneratedContent\": \"<boolean>\" (default = false), \"notifySubscribers\": \"<boolean>\" (optional field)},\n                                    Youtube type can be \"video\" or \"short\" and privacy can be \"public\", \"unlisted\" or \"private\".\n                                    isAiGeneratedContent declares that the video contains realistic altered or synthetic (AI-generated) content, as YouTube requires the channel owner to declare. Applies to both \"video\" and \"short\" types.\n                                    notifySubscribers controls whether YouTube notifies the channel's subscribers about the upload. Omit it unless the user explicitly asks to notify or not to notify subscribers; when omitted, subscribers are notified. When updating a post, keep the value returned by getScheduledPosts. Applies to both \"video\" and \"short\" types.\n                                    Youtube category can be FILM_ANIMATION, AUTOS_VEHICLES, MUSIC, PETS_ANIMALS, SPORTS, TRAVEL_EVENTS, GAMING, PEOPLE_BLOGS, COMEDY, ENTERTAINMENT, NEWS_POLITICS, HOWTO_STYLE, EDUCATION, SCIENCE_TECHNOLOGY, NONPROFITS_ACTIVISM.\n                                \"tiktokData\": {\"disableComment\": \"<boolean>\" (default = false), \"disableDuet\": \"<boolean>\" (default = false), \"disableStitch\": \"<boolean>\" (default = false), \"privacyOption\": \"<string>\" (default = \"PUBLIC_TO_EVERYONE\"), \"commercialContentThirdParty\": \"<boolean>\" (default = false), \"commercialContentOwnBrand\": \"<boolean>\" (default = false), \"title\": \"<string>\", \"autoAddMusic\": \"<boolean>\" (default = false), \"photoCoverIndex\": \"<integer>\" (default = 0), \"isAigc\": \"<boolean>\" (default = false)},\n                                    Tiktok privacyOption can be \"PUBLIC_TO_EVERYONE\", \"MUTUAL_FOLLOW_FRIENDS\", \"FOLLOWER_OF_CREATOR\" or \"SELF_ONLY\".\n                                    isAigc declares that the video was generated or significantly edited by AI. Only applies to TikTok posts with video — TikTok does not support this declaration on photo-only posts, so it is silently ignored (not sent) when the post has no video, regardless of the value you set.\n                                \"blueskyData\": {\"postLanguages\":[\"\",\"\"]},\n                                \"threadsData\":{\"allowedCountryCodes:[\"\",\"\"]},\n                                \"gmbData\": {\"type\": \"<string>\" (default = publication)}\n                                    Google Business Profile type can be \"publication\" or \"photo\".\n                                    \"publication\" is a text update published on the profile: text is required, up to 1500 characters. To publish a video, use a \"photo\" post instead.\n                                    \"photo\" adds media to the profile gallery: at least one image or video is required, and it carries no text of its own.\n            The other fields are optional, but you need to add the ones you have. If you don't have more information, you can ask the user about it and wait until you have the information.\n"
+    },
+    "uuid": {
+     "type": "string",
+     "description": "Uuid of the post to update. Get it from the getScheduledPosts tool previous on the conversation. Unlike id, uuid stays the same across updates."
+    },
+    "blogId": {
+     "type": "string",
+     "description": "Blog id of the Metricool brand account."
+    },
+    "mediaFiles": {
+     "type": "array",
+     "items": {
+      "type": "object",
+      "required": [
+       "download_url",
+       "file_id"
+      ],
+      "properties": {
+       "file_id": {
+        "type": "string"
+       },
+       "file_name": {
+        "type": "string"
+       },
+       "mime_type": {
+        "type": "string"
+       },
+       "download_url": {
+        "type": "string"
+       }
+      }
+     },
+     "description": "Optional. Files attached by ChatGPT's file picker. Each entry's download_url is appended to the post's media array before scheduling. Ignored by non-ChatGPT clients."
+    }
+   },
+   "additionalProperties": false
+  }
+ },
+ {
+  "name": "createScheduledPostForReview",
+  "inputSchema": {
+   "type": "object",
+   "required": [
+    "date",
+    "blogId",
+    "info",
+    "reviewers",
+    "approvalSystem"
+   ],
+   "properties": {
+    "date": {
+     "type": "string",
+     "description": "Date and time to publish the post once approved. Format: ISO 8601 (YYYY-MM-DDTHH:MM:SS±HH:MM)"
+    },
+    "info": {
+     "type": "string",
+     "description": "Data of the post to be scheduled. Same JSON structure as createScheduledPost."
+    },
+    "blogId": {
+     "type": "string",
+     "description": "Blog id of the Metricool brand account."
+    },
+    "notify": {
+     "type": "boolean",
+     "description": "Notify internal Metricool reviewers by email. Default true. External reviewers are always emailed."
+    },
+    "reviewers": {
+     "type": "string",
+     "description": "Comma-separated list of reviewer emails, e.g. \"alice@acme.com, bob@ext.com\"."
+    },
+    "approvalSystem": {
+     "type": "string",
+     "description": "Approval system: \"any\", \"all\" or \"optional\"."
+    }
+   },
+   "additionalProperties": false
+  }
+ },
+ {
+  "name": "createScheduledPost",
+  "inputSchema": {
+   "type": "object",
+   "required": [
+    "date",
+    "blogId",
+    "info"
+   ],
+   "properties": {
+    "date": {
+     "type": "string",
+     "description": "Date and time to publish the post. Format: ISO 8601 (YYYY-MM-DDTHH:MM:SS±HH:MM)"
+    },
+    "info": {
+     "type": "string",
+     "description": "Data of the post to be scheduled. Should be a json object with the following fields:\nautoPublish: True or False, default is True. Selects the delivery method for the scheduled post, exactly as in the Metricool web app: True publishes it automatically via the API at the scheduled time; False sends a push notification to the user's Metricool mobile app instead, so they complete the publication by hand. It does not skip validation, review, or approval steps.\ndescendants: list with the args of the other posts if it is a thread with the format [args of the second post, args of the third post,...  ], default is empty list if there is no thread.\ndraft: True or False, default is False.\nfirstCommentText: Text of the first comment of the post. Default \"\"\nhasNotReadNotes: True or False, default is False.\nmedia: default is empty list. Accepts public URLs to image or video files. External sources like Google Drive or Dropbox are uploaded to Metricool automatically; for Google Drive, the user must have linked Google Drive in their Metricool account.\nvideoThumbnailUrl: default none. Public URL of a custom jpg, jpeg or png cover image for a video post — no other image format is supported. Accepts the same external sources as media (Google Drive/Dropbox auto-uploaded). Requires a video in media, and applies only when the post includes: Instagram Reel/Trial Reel, TikTok (Business-connected accounts only — silently ignored on personal TikTok accounts), YouTube video or Short (the thumbnail only shows if the channel is verified and YouTube has enabled Shorts thumbnails on that account), LinkedIn, or Facebook Post/Reel (not Story). Outside the TikTok-personal-account case, if these conditions are not met the entire request is rejected with a VIDEO_THUMBNAIL_NOT_APPLICABLE error — omit both fields rather than sending them speculatively.\nvideoCoverMilliseconds: default none. Alternative to videoThumbnailUrl — offset in milliseconds into the video to use as the cover frame instead of a custom image. Same requirements and network applicability as videoThumbnailUrl.\nmediaAltText: default is empty list.\nproviders: always need at least one provider with the format [{\"network\":\"<string>\"}]. Use \"twitter\" for X posts. Use \"gmb\" for Google Business Profile. Valid network values are: twitter, facebook, instagram, linkedin, pinterest, youtube, tiktok, bluesky, threads, gmb. brandInfo, website, brandSummary and smartLinks are analytics-only values (used by the analytics tools) and are NOT valid providers here.\npublicationDate: Date and timezone of the post. The format is {dateTime:\"YYYY-MM-DDTHH:mm:ss\", timezone:IANA identifier}. Use the timezone of the user extracted from the getBrandSettings tool.\nshortener: True or False, default is False.\nsmartLinkData: default is {ids:[]}\ntext: Text of the post. It can be empty on Instagram (every type: the caption is optional) and on Facebook Stories; every other network in the post needs it. Stories have no caption of their own, so: a Story published automatically must not carry text when it is the only network of the post; if EVERY network of the post is a Story the text is not published anywhere, so do not send it; and when a Story is posted alongside a non-Story network the text belongs to that other network and the Story ignores it.\nAlways you need to add the networkData for the posts, as empty if you don't have more information. Only include the networkData for the networks you have in the providers list.\n    The format is \"twitterData\": {\"tags\":[{\"username\": \"string\", \"deleted\": false}]}, Tags is used for tagging people on the images of the post, not hashtags. There could be more than one tag, following the same structure.\n                                \"facebookData\": {\"type\":\"<string>\", \"title\":\"<string>\", \"boost\":<double>, \"boostPayer\":\"<string>\", \"boostBeneficiary\":\"<string>\"},\n                                    Facebook type can be \"POST\", \"REEL\" or \"STORY\"\n                                    Facebook title is only available for Facebook videos (This is separate from the main text of the post).\n                                    Facebook boost, boostPayer, and boostBeneficiary are only included if they are promoted posts.\n                                \"instagramData\": {\"type\": \"<string>\" (default = POST), \"collaborators\":[{username: \"string\", deleted: false}]], \"carouselTags\": {\"<media position>\": [{\"username\": \"<string>\", \"x\": <double>, \"y\": <double>}]}, \"showReelOnFeed\": \"<boolean>\" (default = true), \"boost\":<double>, \"boostPayer\":\"<string>\", \"boostBeneficiary\":\"<string>\", \"audioConfiguration\": {\"audioId\": \"<string>\", \"audioType\": \"<string>\", \"title\": \"<string>\", \"displayArtist\": \"<string>\", \"igUsername\": \"<string>\", \"coverArtworkUrl\": \"<string>\", \"durationMs\": <integer>, \"audioVolume\": <integer>, \"videoVolume\": <integer>}, \"isAiGenerated\": \"<boolean>\" (default = false)},\n                                    Instagram type can be \"POST\", \"REEL\", \"STORY\" or \"TRIAL_REEL\". TRIAL_REEL is an Instagram Trial Reel (visible only to non-followers initially); it requires a video, same as REEL.\n                                    isAiGenerated declares that the post's content was generated or significantly altered by AI, as Instagram requires for such content. Applies to POST, REEL, TRIAL_REEL and STORY; for carousels it is a single flag for the whole post, not per image.\n                                    There could be more than one collaborator, following the same structure.\n                                    carouselTags tags people on the media (Instagram user tags, not hashtags or collaborators). Each key is the 0-based position of the item in media (\"0\" for a single image or a Reel) and holds the people tagged on it, so if you add, remove or reorder media, move each tag list with its media item and drop the tags of removed items. x and y place the tag on an image, from 0.0 to 1.0 measured from the top-left corner (default 0.5, the centre); Reels ignore them. Videos inside a carousel do not support people tags, so the request is rejected if you send them there; Stories only apply them on some Instagram accounts.\n                                    audioConfiguration only applies to REEL/TRIAL_REEL and only on Instagram Business accounts connected to a Facebook Page (otherwise the request is rejected). Only audioId is required. audioId accepts either a known numeric Instagram Audio API id, or a search term (song title/artist) that gets resolved automatically when it matches exactly one catalog result — if it matches none or several, the request is rejected with the list of candidates so you can retry with the exact numeric id. Once resolved, audioType/title/displayArtist/igUsername/coverArtworkUrl/durationMs are filled in automatically from the catalog — do not guess them, anything you send for those fields is discarded and overwritten. audioVolume and videoVolume (0-100, default 100) are the only fields under your control; omit them to keep the account's default.\n                                \"linkedinData\": {\"documentTitle\": \"<string>\", \"publishImagesAsPDF\": \"<boolean>\" (default = false), \"previewIncluded\": \"<boolean>\" (default = true), \"type\": \"<string>\" (default = post), \"poll\": {\"question\": \"<string>\", \"options\": [{\"text\": \"<string>\"}, {\"text\": \"<string>\"}], \"settings\": {\"duration\": \"<string>\"}}},\n                                    Linkedin type can be \"post\" or \"poll\".\n                                    Linkedin documentTitle is the title shown for a document post (a single pdf, ppt, pptx, doc or docx document in media, or images published as a PDF carousel). Setting it does not imply publishImagesAsPDF.\n                                    Linkedin publishImagesAsPDF converts several images into a single PDF carousel. Only set it to true when the user explicitly asks to publish images as a PDF/document carousel; never set it when the media is a document (pdf, ppt, pptx, doc or docx).\n                                    Linkedin poll duration can be \"ONE_DAY\", \"THREE_DAYS\", \"SEVEN_DAYS \" or \"FOURTEEN_DAYS \".\n                                \"pinterestData\": {\"boardId\":\"<string>\", \"pinTitle\":\"<string>\",\"pinLink\":\"<string>\", \"pinNewFormat\":\"<boolean>\", \"isAiGenerated\": \"<boolean>\" (optional field), \"isAiGeneratedPerson\": \"<boolean>\" (optional field)},\n                                    Pinterest boardId must be the numeric Pinterest board ID as a string (e.g. \"1234567890\"). NEVER pass a URL-encoded board name.\n                                    If you only know the board name, pass the exact human-readable name (e.g. \"Baking Ideas\") and it will be resolved automatically when unambiguous.\n                                    isAiGenerated declares that the Pin was created or significantly altered with AI, as Pinterest allows for such content. isAiGeneratedPerson declares that the Pin includes an AI-generated person and requires isAiGenerated to be true. Both apply to image and video Pins. To remove the AI declaration, set both isAiGenerated and isAiGeneratedPerson to false. When updating a post, keep the values returned by getScheduledPosts.\n                                \"youtubeData\": {\"title\": \"<string>\", \"type\": \"<string>\" (default = video), \"privacy\": \"<string>\" (default = public), \"tags\": [ \"<string>\", \"<string>\" ], \"category\": \"<string>\" (optional field), \"madeForKids\": \"<boolean>\", \"isAiGeneratedContent\": \"<boolean>\" (default = false), \"notifySubscribers\": \"<boolean>\" (optional field)},\n                                    Youtube type can be \"video\" or \"short\" and privacy can be \"public\", \"unlisted\" or \"private\".\n                                    isAiGeneratedContent declares that the video contains realistic altered or synthetic (AI-generated) content, as YouTube requires the channel owner to declare. Applies to both \"video\" and \"short\" types.\n                                    notifySubscribers controls whether YouTube notifies the channel's subscribers about the upload. Omit it unless the user explicitly asks to notify or not to notify subscribers; when omitted, subscribers are notified. When updating a post, keep the value returned by getScheduledPosts. Applies to both \"video\" and \"short\" types.\n                                    Youtube category can be FILM_ANIMATION, AUTOS_VEHICLES, MUSIC, PETS_ANIMALS, SPORTS, TRAVEL_EVENTS, GAMING, PEOPLE_BLOGS, COMEDY, ENTERTAINMENT, NEWS_POLITICS, HOWTO_STYLE, EDUCATION, SCIENCE_TECHNOLOGY, NONPROFITS_ACTIVISM.\n                                \"tiktokData\": {\"disableComment\": \"<boolean>\" (default = false), \"disableDuet\": \"<boolean>\" (default = false), \"disableStitch\": \"<boolean>\" (default = false), \"privacyOption\": \"<string>\" (default = \"PUBLIC_TO_EVERYONE\"), \"commercialContentThirdParty\": \"<boolean>\" (default = false), \"commercialContentOwnBrand\": \"<boolean>\" (default = false), \"title\": \"<string>\", \"autoAddMusic\": \"<boolean>\" (default = false), \"photoCoverIndex\": \"<integer>\" (default = 0), \"isAigc\": \"<boolean>\" (default = false)},\n                                    Tiktok privacyOption can be \"PUBLIC_TO_EVERYONE\", \"MUTUAL_FOLLOW_FRIENDS\", \"FOLLOWER_OF_CREATOR\" or \"SELF_ONLY\".\n                                    isAigc declares that the video was generated or significantly edited by AI. Only applies to TikTok posts with video — TikTok does not support this declaration on photo-only posts, so it is silently ignored (not sent) when the post has no video, regardless of the value you set.\n                                \"blueskyData\": {\"postLanguages\":[\"\",\"\"]},\n                                \"threadsData\":{\"allowedCountryCodes:[\"\",\"\"]},\n                                \"gmbData\": {\"type\": \"<string>\" (default = publication)}\n                                    Google Business Profile type can be \"publication\" or \"photo\".\n                                    \"publication\" is a text update published on the profile: text is required, up to 1500 characters. To publish a video, use a \"photo\" post instead.\n                                    \"photo\" adds media to the profile gallery: at least one image or video is required, and it carries no text of its own.\n            The other fields are optional, but you need to add the ones you have. If you don't have more information, you can ask the user about it and wait until you have the information.\n"
+    },
+    "blogId": {
+     "type": "string",
+     "description": "Blog id of the Metricool brand account."
+    },
+    "mediaFiles": {
+     "type": "array",
+     "items": {
+      "type": "object",
+      "required": [
+       "download_url",
+       "file_id"
+      ],
+      "properties": {
+       "file_id": {
+        "type": "string"
+       },
+       "file_name": {
+        "type": "string"
+       },
+       "mime_type": {
+        "type": "string"
+       },
+       "download_url": {
+        "type": "string"
+       }
+      }
+     },
+     "description": "Optional. Files attached by ChatGPT's file picker. Each entry's download_url is appended to the post's media array before scheduling. Ignored by non-ChatGPT clients."
+    }
+   },
+   "additionalProperties": false
+  }
+ },
+ {
+  "name": "getBrandSettings",
+  "inputSchema": {
+   "type": "object",
+   "required": [],
+   "properties": {},
+   "additionalProperties": false
+  }
+ },
+ {
+  "name": "getScheduledPosts",
+  "inputSchema": {
+   "type": "object",
+   "required": [
+    "brandId",
+    "fromDate",
+    "toDate",
+    "timezone"
+   ],
+   "properties": {
+    "toDate": {
+     "type": "string",
+     "description": "End date of the period to get the data. Format: ISO 8601 (YYYY-MM-DDTHH:MM:SS±HH:MM)"
+    },
+    "brandId": {
+     "type": "string",
+     "description": "Blog id of the Metricool brand account to get competitor analytics for"
+    },
+    "fromDate": {
+     "type": "string",
+     "description": "Init date of the period to get the data. Format: ISO 8601 (YYYY-MM-DDTHH:MM:SS±HH:MM)"
+    },
+    "timezone": {
+     "type": "string",
+     "description": "Timezone of the post. Format: IANA identifier. Use the timezone from getBrandSettings tool"
+    },
+    "extendedRange": {
+     "type": "boolean",
+     "description": "When it's true, search date range is expanded one day after and one day before. Default value is false."
+    }
+   },
+   "additionalProperties": false
+  }
+ }
+]

@@ -70,6 +70,7 @@ const profileSchema = z
     instagramUsername: z.string().nullish(),
     instagram_username: z.string().nullish(),
     name: z.string().nullish(),
+    networksData: z.object({ instagramData: z.string().nullish() }).passthrough().nullish(),
   })
   .passthrough();
 
@@ -88,7 +89,7 @@ export function parseBrands(raw: unknown): MetricoolBrand[] {
     if (!p.success) return [];
     const blogId = p.data.blogId ?? p.data.blog_id ?? p.data.id;
     if (blogId === undefined) return [];
-    const ig = p.data.instagram ?? p.data.instagramUsername ?? p.data.instagram_username ?? null;
+    const ig = p.data.instagram ?? p.data.instagramUsername ?? p.data.instagram_username ?? p.data.networksData?.instagramData ?? null;
     return [{ blogId: String(blogId), label: p.data.label ?? p.data.title ?? p.data.name ?? `Marca ${blogId}`, instagram: ig ? ig.replace(/^@/, "") : null }];
   });
 }
@@ -117,6 +118,8 @@ export type ScheduleInput = {
   text: string;
   media: string[];
   type: InstagramType;
+  /** Conteúdo gerado por IA (CLAUDE.md regra 9): vai como instagramData.isAiGenerated. */
+  aiGenerated?: boolean;
 };
 
 export function scheduleBody(input: ScheduleInput) {
@@ -128,7 +131,7 @@ export function scheduleBody(input: ScheduleInput) {
     saveExternalMediaFiles: true,
     autoPublish: true, // sem isso o Instagram só manda notificação para o celular
     draft: false,
-    instagramData: { type: input.type, autoPublish: true },
+    instagramData: { type: input.type, autoPublish: true, ...(input.aiGenerated ? { isAiGenerated: true } : {}) },
   };
 }
 

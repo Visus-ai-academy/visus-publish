@@ -319,6 +319,7 @@ async function publishViaMetricool(opts: PublishOptions, post: Post, blogId: str
     text: post.format === "story" ? "" : (post.caption ?? ""),
     media,
     type: METRICOOL_TYPE[post.format],
+    aiGenerated: post.is_ai_generated,
   });
   await setExternal(db, post.id, externalId);
   return sent();

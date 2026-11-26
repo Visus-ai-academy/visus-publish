@@ -6,12 +6,12 @@ import { StatusDot } from "@/components/ui/status";
 import { firstMediaUrls, Thumb } from "@/components/ui/thumb";
 import { PROVIDER_LABELS, type CaptionProviderId } from "@/lib/ai/providers";
 import { can } from "@/lib/auth/permissions";
-import { FORMAT_LABELS } from "@/lib/posts/upload";
 import { resolveTenant } from "@/lib/tenant";
 import { monthRange, shiftMonth, tomorrowIn, utcToZoned, zonedToUtc } from "@/lib/time";
 import { loadCadence } from "@/lib/plan/load";
 import { monthSlots, takenKeys, weeklySummary } from "@/lib/plan/cadence";
 import { DELETABLE_STATUSES } from "@/lib/posts/transitions";
+import { FormatTag } from "@/components/ui/format-tag";
 import { AddItemForm, GenerateAll, RowActions, SuggestForm } from "./plan-forms";
 
 // Cada geração (legenda + arte) roda numa chamada; carrossel pode levar alguns minutos
@@ -182,7 +182,9 @@ export default async function PlanningPage({ params, searchParams }: PageProps<"
                             {r.status === "generation_failed" && r.last_error ? <p className="text-[13px] text-danger">{r.last_error}</p> : null}
                             {r.compliance_flags.length ? <p className="text-[13px] text-danger">Atenção: {r.compliance_flags.join("; ")}</p> : null}
                           </td>
-                          <td className="py-3 pr-4 text-text-2">{FORMAT_LABELS[r.format]}</td>
+                          <td className="py-3 pr-4">
+                            <FormatTag format={r.format} />
+                          </td>
                           <td className="py-3 pr-4 text-text-2">{r.origin === "upload" ? "Equipe" : providerLabel(r.media_provider ?? r.caption_provider)}</td>
                           <td className="py-3 pr-4">{waitingVideo ? <span className="text-text-2">Aguardando vídeo</span> : <StatusDot status={r.status} />}</td>
                           <td className="w-px py-3 pr-4 text-right whitespace-nowrap">

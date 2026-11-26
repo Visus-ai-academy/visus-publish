@@ -4,9 +4,9 @@ import { SCREENS } from "@/components/shell/nav";
 import { EmptyState, ErrorNote } from "@/components/ui/states";
 import { StatusDot } from "@/components/ui/status";
 import { MonthGrid } from "@/components/calendar/month-grid";
+import { FormatTag } from "@/components/ui/format-tag";
 import { firstMediaUrls, Thumb } from "@/components/ui/thumb";
 import { can } from "@/lib/auth/permissions";
-import { FORMAT_LABELS } from "@/lib/posts/upload";
 import { resolveTenant } from "@/lib/tenant";
 import { monthRange, shiftMonth, utcToZoned } from "@/lib/time";
 import { PostButtons } from "../post-buttons";
@@ -57,7 +57,7 @@ export default async function CalendarPage({ params, searchParams }: PageProps<"
         actions={
           can(role, "edit_content") ? (
             <Link href={`/${tenant.slug}/criativos`} className="inline-flex h-10 items-center rounded-md bg-primary px-4 font-semibold text-on-primary hover:bg-primary-hover">
-              Subir criativo
+              Enviar criativo
             </Link>
           ) : null
         }
@@ -91,6 +91,7 @@ export default async function CalendarPage({ params, searchParams }: PageProps<"
             posts={posts.map((p) => ({
               id: p.id,
               theme: p.theme,
+              format: p.format,
               status: p.status,
               date: utcToZoned(new Date(p.scheduled_at), tenant.timezone).date,
               time: hour.format(new Date(p.scheduled_at)),
@@ -99,7 +100,7 @@ export default async function CalendarPage({ params, searchParams }: PageProps<"
             }))}
           />
         ) : posts.length === 0 ? (
-          <EmptyState title="Nada agendado neste mês" body="Suba um criativo pronto para agendar a primeira publicação." />
+          <EmptyState title="Nada agendado neste mês" body="Envie um criativo que você já tem ou gere um no Planejamento." />
         ) : (
           <table className="w-full border-collapse text-left">
             <thead>
@@ -145,7 +146,9 @@ export default async function CalendarPage({ params, searchParams }: PageProps<"
                       {p.status === "failed" && p.last_error ? <p className="text-[13px] text-danger">{p.last_error}</p> : null}
                     </td>
                     <td className="py-3 pr-4 text-text-2">@{p.ig_accounts?.username}</td>
-                    <td className="py-3 pr-4">{FORMAT_LABELS[p.format]}</td>
+                    <td className="py-3 pr-4">
+                      <FormatTag format={p.format} />
+                    </td>
                     <td className="py-3 pr-4">
                       <StatusDot status={p.status} />
                     </td>

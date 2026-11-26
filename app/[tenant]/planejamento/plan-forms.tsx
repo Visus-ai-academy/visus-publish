@@ -7,7 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Field, Input, Select } from "@/components/ui/input";
 import { ErrorNote } from "@/components/ui/states";
 import { Notice } from "@/components/ui/status";
-import { FORMATS, FORMAT_LABELS, type Format } from "@/lib/posts/upload";
+import { FORMATS, FORMAT_LABELS } from "@/lib/posts/upload";
 import { addPlanItem, generateItem, removePlanItem, suggestPlan } from "./actions";
 
 export function AddItemForm({ slug, accountId, defaultDate }: { slug: string; accountId: string; defaultDate: string }) {
@@ -56,12 +56,22 @@ export function AddItemForm({ slug, accountId, defaultDate }: { slug: string; ac
   );
 }
 
-export function SuggestForm({ slug, accountId, month, monthName }: { slug: string; accountId: string; month: string; monthName: string }) {
+export function SuggestForm({
+  slug,
+  accountId,
+  month,
+  monthName,
+  cadence,
+}: {
+  slug: string;
+  accountId: string;
+  month: string;
+  monthName: string;
+  cadence: { summary: string; saved: boolean; free: number; href: string };
+}) {
   const [pending, start] = useTransition();
   const [error, setError] = useState<string | null>(null);
   const [done, setDone] = useState<string | null>(null);
-  const [formats, setFormats] = useState<Format[]>(["image", "carousel", "reels"]);
-  const toggle = (f: Format) => setFormats((s) => (s.includes(f) ? s.filter((x) => x !== f) : [...s, f]));
   return (
     <form
       className="flex flex-col gap-3"
@@ -71,38 +81,32 @@ export function SuggestForm({ slug, accountId, month, monthName }: { slug: strin
         setError(null);
         setDone(null);
         start(async () => {
-          const r = await suggestPlan(slug, { accountId, month, count: fd.get("count"), hint: String(fd.get("hint") ?? "") || undefined, formats });
+          const r = await suggestPlan(slug, { accountId, month, hint: String(fd.get("hint") ?? "") || undefined });
           if (!r.ok) return setError(r.error);
-          setDone(`${r.added} temas adicionados. Revise e gere as legendas e artes.`);
+          setDone(`${r.added} temas adicionados nas vagas da cadência. Revise e gere as legendas e artes.`);
         });
       }}
     >
       <h2 className="text-[15px] font-semibold">Sugerir temas com IA</h2>
-      <Field label="Quantidade" htmlFor="s-count">
-        <Select id="s-count" name="count" defaultValue="8" className="w-40! self-start">
-          {[4, 8, 12, 16].map((n) => (
-            <option key={n} value={n}>
-              {n} posts
-            </option>
-          ))}
-        </Select>
-      </Field>
+      <div className="flex flex-col gap-1 rounded-md border border-brand/30 bg-brand-soft/60 px-3 py-2.5 text-[14px]">
+        <p>
+          <span className="font-semibold text-brand-dark">Cadência:</span> {cadence.summary}
+          {cadence.saved ? "" : " (padrão)"}
+        </p>
+        <p className="text-[13px] text-text-2 tabular-nums">
+          {cadence.free === 0 ? `Nenhuma vaga livre em ${monthName}.` : `${cadence.free} ${cadence.free === 1 ? "vaga livre" : "vagas livres"} em ${monthName}.`}
+        </p>
+        <Link href={cadence.href} className="inline-flex min-h-10 items-center self-start font-semibold text-brand-dark underline">
+          Editar cadência
+        </Link>
+      </div>
       <Field label="Orientação (opcional)" htmlFor="s-hint">
         <Input id="s-hint" name="hint" maxLength={300} placeholder="Ex.: campanha de fim de ano" className="w-full" />
       </Field>
-      <fieldset className="flex flex-wrap gap-x-4 gap-y-2">
-        <legend className="mb-1 text-[13px] font-medium text-text-2">Formatos</legend>
-        {FORMATS.map((f) => (
-          <label key={f} className="inline-flex min-h-10 items-center gap-2 text-[14px]">
-            <input type="checkbox" checked={formats.includes(f)} onChange={() => toggle(f)} className="size-4 accent-[#14161A]" />
-            {FORMAT_LABELS[f]}
-          </label>
-        ))}
-      </fieldset>
-      <p className="text-[13px] text-muted-fg">Reels sai com legenda; o vídeo é enviado pela equipe no item.</p>
+      <p className="text-[13px] text-muted-fg">A IA dá um tema para cada vaga livre, no dia, horário e formato da cadência. Reels sai com legenda; o vídeo é enviado pela equipe no item.</p>
       {error ? <ErrorNote>{error}</ErrorNote> : null}
       {done ? <Notice tone="success">{done}</Notice> : null}
-      <Button type="submit" variant="secondary" disabled={pending || !formats.length} className="self-start">
+      <Button type="submit" variant="secondary" disabled={pending || cadence.free === 0} className="self-start">
         {pending ? "Pensando nos temas…" : `Sugerir temas para ${monthName}`}
       </Button>
     </form>

@@ -884,6 +884,49 @@ export type Database = {
           },
         ];
       };
+      posting_cadences: {
+        Row: {
+          ig_account_id: string;
+          niche: string | null;
+          slots: NonNullable<Json>;
+          tenant_id: string;
+          updated_at: string;
+          updated_by: string | null;
+        };
+        ComputedFields: never;
+        Insert: {
+          ig_account_id: string;
+          niche?: string | null;
+          slots?: NonNullable<Json>;
+          tenant_id: string;
+          updated_at?: string;
+          updated_by?: string | null;
+        };
+        Update: {
+          ig_account_id?: string;
+          niche?: string | null;
+          slots?: NonNullable<Json>;
+          tenant_id?: string;
+          updated_at?: string;
+          updated_by?: string | null;
+        };
+        Relationships: [
+          {
+            foreignKeyName: "posting_cadences_ig_account_id_tenant_id_fkey";
+            columns: ["ig_account_id", "tenant_id"];
+            isOneToOne: false;
+            referencedRelation: "ig_accounts";
+            referencedColumns: ["id", "tenant_id"];
+          },
+          {
+            foreignKeyName: "posting_cadences_tenant_id_fkey";
+            columns: ["tenant_id"];
+            isOneToOne: false;
+            referencedRelation: "tenants";
+            referencedColumns: ["id"];
+          },
+        ];
+      };
       posts: {
         Row: {
           approved_at: string | null;

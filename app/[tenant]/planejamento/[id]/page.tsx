@@ -1,5 +1,7 @@
 import { notFound } from "next/navigation";
 import { PageHeader } from "@/components/shell/app-shell";
+import { DELETABLE_STATUSES } from "@/lib/posts/transitions";
+import { DeletePostButton } from "../../delete-post-button";
 import { StatusDot } from "@/components/ui/status";
 import { can } from "@/lib/auth/permissions";
 import { FORMAT_LABELS } from "@/lib/posts/upload";
@@ -37,6 +39,14 @@ export default async function PlanItemPage({ params }: PageProps<"/[tenant]/plan
       <div className="flex max-w-[1040px] flex-col gap-5">
         <div className="flex flex-wrap items-center gap-4">
           <StatusDot status={post.status} />
+          {canEdit && (DELETABLE_STATUSES as readonly string[]).includes(post.status) ? (
+            <DeletePostButton
+              slug={tenant.slug}
+              postId={post.id}
+              warn={post.status === "scheduled" ? "Este post já está agendado e deixa de ser publicado." : undefined}
+              after={`/${tenant.slug}/planejamento?mes=${month}`}
+            />
+          ) : null}
           {post.is_ai_generated ? <span className="text-[13px] text-text-2">Arte gerada com IA (o Instagram mostra o selo)</span> : null}
         </div>
         {post.status === "generation_failed" && post.last_error ? <p className="rounded-md bg-danger-bg px-3 py-2.5 text-[13px] text-danger">{post.last_error}</p> : null}
@@ -83,7 +93,7 @@ export default async function PlanItemPage({ params }: PageProps<"/[tenant]/plan
             ) : null}
             {canEdit && generatable ? (
               <div className="self-start">
-                <RowActions slug={tenant.slug} postId={post.id} canGenerate regenerate={!!post.caption} />
+                <RowActions slug={tenant.slug} postId={post.id} canGenerate regenerate={!!post.caption} canDelete={false} />
               </div>
             ) : null}
           </div>

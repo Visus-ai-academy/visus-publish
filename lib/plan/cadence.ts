@@ -1,5 +1,6 @@
 import { z } from "zod";
 import { FORMATS, type Format } from "@/lib/posts/upload";
+import { utcToZoned } from "@/lib/time";
 
 /** Dias da semana como Date.getUTCDay(): 0 = domingo. */
 export const WEEKDAYS = ["Domingo", "Segunda", "Terça", "Quarta", "Quinta", "Sexta", "Sábado"] as const;
@@ -41,8 +42,23 @@ export function readCadence(raw: unknown): Slot[] {
 export type MonthSlot = { date: string; day: number; time: string; format: Format };
 
 /**
+ * Chaves das vagas ocupadas pelos posts que já existem: "YYYY-MM-DD HH:MM" (mesmo horário)
+ * e "YYYY-MM-DD formato" (mesmo formato no dia), no fuso do cliente. Assim, mudar a
+ * cadência não cria um segundo post do mesmo formato num dia que já tem um.
+ */
+export function takenKeys(posts: { scheduled_at: string; format: string }[], timezone: string): Set<string> {
+  const out = new Set<string>();
+  for (const p of posts) {
+    const { date, time } = utcToZoned(new Date(p.scheduled_at), timezone);
+    out.add(`${date} ${time}`);
+    out.add(`${date} ${p.format}`);
+  }
+  return out;
+}
+
+/**
  * Vagas do mês ("2026-12") a partir do dia `firstDay`, sem as que já têm post
- * (`taken` guarda "YYYY-MM-DD HH:MM" no fuso do cliente).
+ * no mesmo horário ou no mesmo formato naquele dia (ver `takenKeys`).
  */
 export function monthSlots(month: string, slots: Slot[], firstDay: number, taken: Set<string>): MonthSlot[] {
   const [y, m] = month.split("-").map(Number);
@@ -52,7 +68,7 @@ export function monthSlots(month: string, slots: Slot[], firstDay: number, taken
     const weekday = new Date(Date.UTC(y, m - 1, d)).getUTCDay();
     const date = `${month}-${String(d).padStart(2, "0")}`;
     for (const s of slots) {
-      if (s.weekday !== weekday || taken.has(`${date} ${s.time}`)) continue;
+      if (s.weekday !== weekday || taken.has(`${date} ${s.time}`) || taken.has(`${date} ${s.format}`)) continue;
       out.push({ date, day: d, time: s.time, format: s.format });
     }
   }

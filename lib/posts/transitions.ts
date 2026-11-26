@@ -33,6 +33,13 @@ export const TRANSITIONS: Record<PostStatus, Partial<Record<PostStatus, "user" |
   paused: { scheduled: "system" },
 };
 
+/**
+ * Pode excluir enquanto nada saiu para o Instagram: o envio ao Metricool ou à Meta só
+ * acontece quando a rotina pega o post (status "publishing"), então um post "scheduled"
+ * ainda não existe fora do app. O delete filtra por estes status, o que evita a corrida com a rotina.
+ */
+export const DELETABLE_STATUSES = ["planned", "rejected", "generation_failed", "pending_approval", "scheduled", "paused"] as const satisfies readonly PostStatus[];
+
 export function canTransition(from: PostStatus, to: PostStatus, by: "user" | "system"): boolean {
   const who = TRANSITIONS[from][to];
   return who === by || (by === "system" && who === "user");

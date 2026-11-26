@@ -50,6 +50,22 @@ test("editor sobe criativo para conta que publica direto e cancela", async ({ pa
   await expect(row.getByText("Planejado")).toBeVisible();
 });
 
+test("editor exclui post já agendado, com confirmação", async ({ page }) => {
+  const theme = `Excluir ${Date.now()}`;
+  await loginOk(page, "edu@aurora.local");
+  await upload(page, /aurora\.estetica/, theme);
+  await expect(page.getByText("Post agendado.")).toBeVisible();
+
+  const row = await calendarRow(page, theme);
+  await expect(row.getByText("Agendado")).toBeVisible();
+  await row.getByRole("button", { name: "Excluir" }).click();
+  await row.getByRole("button", { name: "Não" }).click();
+  await expect(row.getByText("Agendado")).toBeVisible();
+  await row.getByRole("button", { name: "Excluir" }).click();
+  await row.getByRole("button", { name: "Sim, excluir" }).click();
+  await expect(page.getByRole("row").filter({ hasText: theme })).toHaveCount(0);
+});
+
 test("conta com aprovação: editor sobe, aprovadora aprova, sai do ar pela rotina", async ({ page, browser }) => {
   const theme = `Aprovação ${Date.now()}`;
   await loginOk(page, "edu@aurora.local");

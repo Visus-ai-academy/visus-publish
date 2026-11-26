@@ -10,6 +10,10 @@ import { FORMAT_LABELS } from "@/lib/posts/upload";
 import { resolveTenant } from "@/lib/tenant";
 import { monthRange, shiftMonth, utcToZoned } from "@/lib/time";
 import { PostButtons } from "../post-buttons";
+import { DeletePostButton } from "../delete-post-button";
+import { DELETABLE_STATUSES } from "@/lib/posts/transitions";
+
+const DELETABLE = new Set<string>(DELETABLE_STATUSES);
 
 export default async function CalendarPage({ params, searchParams }: PageProps<"/[tenant]/calendario">) {
   const { tenant, role, supabase } = await resolveTenant((await params).tenant);
@@ -18,6 +22,7 @@ export default async function CalendarPage({ params, searchParams }: PageProps<"
   const month = typeof sp.mes === "string" && /^\d{4}-\d{2}$/.test(sp.mes) ? sp.mes : current;
   const { start, end } = monthRange(month, tenant.timezone);
   const canPublish = can(role, "publish");
+  const canEdit = can(role, "edit_content");
   const view = sp.vista === "grade" ? "grade" : "lista";
 
   const { data: posts, error } = await supabase
@@ -149,9 +154,14 @@ export default async function CalendarPage({ params, searchParams }: PageProps<"
                         <a href={p.permalink} target="_blank" rel="noreferrer" className="inline-flex h-10 items-center rounded-md px-2.5 text-[13px] font-semibold hover:bg-muted">
                           Ver no Instagram
                         </a>
-                      ) : actions.length ? (
-                        <PostButtons slug={tenant.slug} postId={p.id} actions={actions} />
-                      ) : null}
+                      ) : (
+                        <div className="flex flex-nowrap items-center gap-1 whitespace-nowrap">
+                          {actions.length ? <PostButtons slug={tenant.slug} postId={p.id} actions={actions} /> : null}
+                          {canEdit && DELETABLE.has(p.status) ? (
+                            <DeletePostButton slug={tenant.slug} postId={p.id} warn={p.status === "scheduled" ? "Este post já está agendado e deixa de ser publicado." : undefined} />
+                          ) : null}
+                        </div>
+                      )}
                     </td>
                   </tr>
                 );

@@ -159,3 +159,16 @@ describe("slots de post em vários dias", () => {
     expect(expandRows(rows)[0]).toEqual({ weekday: 1, time: "09:00", format: "story" });
   });
 });
+
+import { takenKeys } from "@/lib/plan/cadence";
+
+describe("vagas ocupadas", () => {
+  it("dia com post do mesmo formato não recebe outro, mesmo em outro horário", () => {
+    // Post de foto já existe na segunda 7/12 às 18:00 (21:00 UTC). A cadência mudou para 12:00.
+    const taken = takenKeys([{ scheduled_at: "2026-12-07T21:00:00Z", format: "image" }], "America/Sao_Paulo");
+    expect(taken.has("2026-12-07 18:00")).toBe(true);
+    const v = monthSlots("2026-12", [{ weekday: 1, time: "12:00", format: "image" }, { weekday: 1, time: "09:00", format: "story" }], 7, taken);
+    expect(v.filter((x) => x.date === "2026-12-07").map((x) => x.format)).toEqual(["story"]);
+    expect(v.some((x) => x.date === "2026-12-14" && x.format === "image")).toBe(true);
+  });
+});

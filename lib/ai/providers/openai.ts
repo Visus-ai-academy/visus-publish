@@ -24,7 +24,7 @@ export function openaiProvider(cfg: ProviderConfig = {}): CaptionProvider {
         }),
         signal: AbortSignal.timeout(60_000),
       });
-      if (!res.ok) throw await failure("OpenAI", res);
+      if (!res.ok) throw await failure("OpenAI", res, req.model);
       const body = (await res.json()) as { choices?: { message?: { content?: string | null; refusal?: string | null } }[] };
       const msg = body.choices?.[0]?.message;
       if (msg?.refusal) throw new AiProviderError("A OpenAI se recusou a descrever esta mídia.");
@@ -44,7 +44,7 @@ export async function openaiTranscribe(cfg: ProviderConfig, req: { apiKey: strin
   form.append("language", "pt");
   form.append("response_format", "json");
   const res = await f(`${base}/audio/transcriptions`, { method: "POST", headers: { authorization: `Bearer ${req.apiKey}` }, body: form, signal: AbortSignal.timeout(120_000) });
-  if (!res.ok) throw await failure("OpenAI", res);
+  if (!res.ok) throw await failure("OpenAI", res, req.model);
   const body = (await res.json()) as { text?: string };
   return (body.text ?? "").trim();
 }

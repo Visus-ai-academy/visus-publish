@@ -118,7 +118,11 @@ export async function generatePost(db: Db, tenantId: string, postId: string, opt
 
     // 1. Legenda (e roteiro dos slides no carrossel)
     const p = captionPrompt({ format, mediaKind: "image", frameCount: 0, theme: post.theme, username: account?.username ?? "", brand });
-    const raw = await captionProvider(textAi.id, opts.providers).generateCaption({ apiKey: textAi.key, model: textAi.model, system: p.system, user: p.user, images: [] });
+    const raw = await captionProvider(textAi.id, opts.providers)
+      .generateCaption({ apiKey: textAi.key, model: textAi.model, system: p.system, user: p.user, images: [] })
+      .catch((e: unknown) => {
+        throw e instanceof AiProviderError ? new AiProviderError(`A legenda falhou. ${e.message}`, e.status) : e;
+      });
     // O tema já vem do planejamento; só a legenda (e os slides) importam aqui
     const parsed = captionOutputSchema.safeParse(raw && typeof raw === "object" ? { ...raw, tema: post.theme } : raw);
     if (!parsed.success) throw new AiProviderError("A IA respondeu num formato inesperado. Tente de novo.");
@@ -136,8 +140,21 @@ export async function generatePost(db: Db, tenantId: string, postId: string, opt
         prompts.push(imagePrompt({ theme: post.theme, title: post.theme, format, brand }));
       }
     }
+    // A legenda fica salva mesmo se a arte falhar (gerar de novo sobrescreve)
+    const { error: capErr } = await db
+      .from("posts")
+      .update({ caption: caption || null, caption_provider: textAi.id })
+      .eq("tenant_id", tenantId)
+      .eq("id", postId);
+    if (capErr) throw new Error(`posts: ${capErr.message}`);
+
     const images = [];
-    for (const prompt of prompts) images.push(await imageProvider(imageAi!.id, opts.providers).generateImage({ apiKey: imageAi!.key, model: imageAi!.model, prompt, aspect: ASPECT[format] }));
+    try {
+      for (const prompt of prompts) images.push(await imageProvider(imageAi!.id, opts.providers).generateImage({ apiKey: imageAi!.key, model: imageAi!.model, prompt, aspect: ASPECT[format] }));
+    } catch (e) {
+      if (e instanceof AiProviderError) throw new AiProviderError(`A legenda foi gerada, mas a arte falhou. ${e.message}`, e.status);
+      throw e;
+    }
     if (imageAi) await logJob(db, { tenant_id: tenantId, post_id: postId, task: "image", provider: imageAi.id, model: imageAi.model, status: "succeeded", request: { images: prompts.length } });
 
     // 3. Troca a mídia antiga (gerar de novo) pela nova

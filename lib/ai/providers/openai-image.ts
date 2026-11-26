@@ -14,7 +14,7 @@ export function openaiImageProvider(cfg: ProviderConfig = {}): ImageProvider {
         body: JSON.stringify({ model: req.model, prompt: req.prompt, size: SIZE[req.aspect], n: 1, output_format: "jpeg" }),
         signal: AbortSignal.timeout(180_000),
       });
-      if (!res.ok) throw await failure("OpenAI", res);
+      if (!res.ok) throw await failure("OpenAI", res, req.model);
       const body = (await res.json()) as { data?: { b64_json?: string }[] };
       const b64 = body.data?.[0]?.b64_json;
       if (!b64) throw new AiProviderError("A OpenAI não devolveu a imagem.");

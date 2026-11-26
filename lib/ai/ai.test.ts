@@ -4,6 +4,7 @@ import { healthFlags, mergeFlags } from "./health";
 import { checkKey } from "./keys";
 import { captionOutputSchema, captionPrompt, composeCaption } from "./prompts/caption";
 import { captionProvider } from "./providers";
+import { failure } from "./providers/types";
 
 const out = (o: Partial<{ tema: string; legenda: string; hashtags: string[]; riscos: string[] }>) => captionOutputSchema.parse({ tema: "Tema", ...o });
 
@@ -100,5 +101,27 @@ describe("provedores", () => {
     const { f } = fakeFetch(() => new Response("segredo da conta", { status: 401 }));
     await expect(captionProvider("openai", { openai: { fetch: f } }).generateCaption(req)).rejects.toThrow(/chave da OpenAI foi recusada/);
     await expect(checkKey("gemini", "x", { gemini: { fetch: f } })).resolves.toMatch(/recusada/);
+  });
+});
+
+describe("failure: mensagem útil a partir do erro do provedor", () => {
+  const res = (status: number, error: object) => new Response(JSON.stringify({ error }), { status });
+  it("explica filtro de conteúdo", async () => {
+    const e = await failure("OpenAI", res(400, { code: "moderation_blocked", message: "Your request was rejected by the safety system." }), "gpt-image-1");
+    expect(e.message).toContain("filtro de conteúdo");
+  });
+  it("explica verificação da organização", async () => {
+    const e = await failure("OpenAI", res(403, { message: "Your organization must be verified to use the model `gpt-image-1`." }), "gpt-image-1");
+    expect(e.message).toContain("verificar a sua organização");
+    expect(e.message).toContain("gpt-image-1");
+  });
+  it("mostra o motivo do 400 sem vazar a chave", async () => {
+    const e = await failure("OpenAI", res(400, { code: "invalid_value", message: "Invalid size for key sk-proj-abc123456. Supported: 1024x1024" }));
+    expect(e.message).toContain("recusou o pedido (400): Invalid size");
+    expect(e.message).not.toContain("sk-proj");
+  });
+  it("aguenta corpo que não é JSON", async () => {
+    const e = await failure("Gemini", new Response("oops", { status: 400 }));
+    expect(e.message).toBe("A Gemini recusou o pedido (400)");
   });
 });

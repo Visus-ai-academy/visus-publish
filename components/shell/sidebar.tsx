@@ -80,6 +80,7 @@ export function Sidebar({
           <div className="flex flex-col gap-0.5">
             <p className="px-2.5 pb-1 text-[12px] font-medium text-muted-fg">Plataforma</p>
             {item("/admin/clientes", "Clientes", ADMIN_ICON)}
+            {item("/admin/ia", "IA", ADMIN_ICON)}
           </div>
         ) : null}
       </nav>

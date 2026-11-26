@@ -15,7 +15,7 @@ export default defineConfig({
   projects: [{ name: "chromium", use: { ...devices["Desktop Chrome"] } }],
   webServer: {
     command: "pnpm start --hostname 127.0.0.1 --port 3000",
-    // Meta e Metricool simulados e segredos de teste (nunca use estes valores fora do ambiente local)
+    // Meta, Metricool e OpenAI simulados e segredos de teste (nunca use estes valores fora do ambiente local)
     env: {
       META_APP_ID: "e2e-app",
       META_APP_SECRET: "e2e-secret",
@@ -23,6 +23,7 @@ export default defineConfig({
       META_GRAPH_BASE_URL: "http://127.0.0.1:54399",
       METRICOOL_BASE_URL: "http://127.0.0.1:54398",
       METRICOOL_MCP_URL: "http://127.0.0.1:54398/mcp",
+      OPENAI_BASE_URL: "http://127.0.0.1:54397/v1",
       APP_URL: "http://127.0.0.1:3000",
       OAUTH_STATE_SECRET: "e2e-oauth-state-secret-com-32-caracteres",
       CRON_SECRET: "e2e-cron-secret-com-pelo-menos-32-caracteres",

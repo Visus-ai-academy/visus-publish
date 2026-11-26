@@ -75,3 +75,11 @@ Opção B: o cron da hospedagem (por exemplo Vercel Cron) chamando as mesmas URL
 ## 4. Mídia
 
 A Meta (ou o Metricool, que copia o arquivo para ele) baixa a mídia por uma URL assinada do Storage (válida por 6 h) no momento da publicação. O Supabase precisa estar acessível pela internet; o Supabase local não serve para publicar de verdade.
+
+## 5. IA (tema e legenda a partir do criativo)
+
+- A chave da OpenAI ou do Gemini é cadastrada pelo admin da plataforma em **Admin → IA** (`/admin/ia`). O app confere a chave no provedor e guarda no Vault (`ai_platform_keys` + `store_platform_ai_key`); ela não volta para a tela.
+- Modelos ficam em `ai_models` (`openai:caption`, `gemini:caption`) e podem ser trocados na mesma tela.
+- Cliente em `ai_settings.billing_mode = 'own'` usa só as chaves dele (`ai_credentials`); a tela para isso vem na Fase 3.
+- Na tela Criativos prontos, o botão manda à IA a imagem reduzida (ou 4 quadros do vídeo, sem áudio) gerada no navegador. Cada geração fica em `generation_jobs`, sem as imagens.
+- Marca de saúde (`brand_profiles.is_healthcare`): o servidor confere o texto final e junta os riscos que a IA apontou em `posts.compliance_flags`. Post com alerta vai para aprovação mesmo em conta "publica direto".

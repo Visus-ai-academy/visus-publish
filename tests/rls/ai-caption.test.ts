@@ -33,6 +33,8 @@ beforeAll(async () => {
   [admin, editor, approver, outsider, platform] = await Promise.all(["aic-admin", "aic-editor", "aic-approver", "aic-out", "aic-platform"].map(createUser));
   tenant = must(await service.from("tenants").insert({ slug: slug("aic"), name: "AIC" }).select("id").single()).id;
   other = must(await service.from("tenants").insert({ slug: slug("aic-o"), name: "AIC O" }).select("id").single()).id;
+  // Gerações no modo Créditos da Visus precisam de saldo
+  ok(await service.rpc("grant_credits", { p_tenant: tenant, p_amount: 1000, p_reason: "teste" }));
   must(
     await service
       .from("memberships")

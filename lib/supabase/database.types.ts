@@ -1079,7 +1079,16 @@ export type Database = {
       _put_secret: { Args: { p_id: string; p_name: string; p_value: string }; Returns: string };
       accept_invitation: { Args: { p_token: string }; Returns: string };
       add_post_flags: { Args: { p_flags: string[]; p_post: string }; Returns: undefined };
+      ai_key_status: {
+        Args: { p_tenant: string };
+        Returns: {
+          own: boolean;
+          platform: boolean;
+          provider: string;
+        }[];
+      };
       begin_generation: { Args: { p_note?: string; p_post: string }; Returns: undefined };
+      charge_credits: { Args: { p_amount: number; p_reason: string; p_tenant: string }; Returns: number };
       claim_awaiting_confirmation: {
         Args: { p_every?: string; p_limit?: number };
         Returns: {
@@ -1160,6 +1169,7 @@ export type Database = {
           isSetofReturn: true;
         };
       };
+      credit_balance: { Args: { p_tenant: string }; Returns: number };
       delete_ig_token: { Args: { p_account: string }; Returns: undefined };
       delete_metricool_connection: { Args: { p_tenant: string }; Returns: undefined };
       finish_generation: { Args: { p_error?: string; p_post: string }; Returns: Database["public"]["Enums"]["post_status"] };
@@ -1167,6 +1177,7 @@ export type Database = {
         Args: { p_error?: string; p_ig_media_id?: string; p_outcome: string; p_permalink?: string; p_post: string; p_retry_at?: string };
         Returns: Database["public"]["Enums"]["post_status"];
       };
+      grant_credits: { Args: { p_amount: number; p_reason: string; p_tenant: string }; Returns: number };
       has_tenant_role: { Args: { roles?: Database["public"]["Enums"]["member_role"][]; t: string }; Returns: boolean };
       invitation_preview: {
         Args: { p_token: string };
@@ -1201,11 +1212,20 @@ export type Database = {
       storage_tenant: { Args: { p_name: string }; Returns: string };
       store_ig_token: { Args: { p_account: string; p_expires_at: string; p_token: string }; Returns: undefined };
       store_metricool_oauth: {
-        Args: { p_access: string; p_actor?: string; p_client_id: string; p_client_secret?: string; p_expires_at?: string; p_refresh?: string; p_tenant: string };
+        Args: {
+          p_access: string;
+          p_actor?: string;
+          p_client_id: string;
+          p_client_secret?: string;
+          p_expires_at?: string;
+          p_refresh?: string;
+          p_tenant: string;
+        };
         Returns: undefined;
       };
       store_metricool_token: { Args: { p_actor?: string; p_tenant: string; p_token: string; p_user_id: string }; Returns: undefined };
       store_platform_ai_key: { Args: { p_actor?: string; p_key: string; p_provider: string }; Returns: undefined };
+      store_tenant_ai_key: { Args: { p_actor?: string; p_key: string; p_provider: string; p_tenant: string }; Returns: undefined };
       tenant_members: {
         Args: { p_tenant: string };
         Returns: {
@@ -1215,7 +1235,10 @@ export type Database = {
           user_id: string;
         }[];
       };
-      transition_post: { Args: { p_note?: string; p_post: string; p_to: Database["public"]["Enums"]["post_status"] }; Returns: Database["public"]["Enums"]["post_status"] };
+      transition_post: {
+        Args: { p_note?: string; p_post: string; p_to: Database["public"]["Enums"]["post_status"] };
+        Returns: Database["public"]["Enums"]["post_status"];
+      };
     };
     Enums: {
       ai_task: "caption" | "image" | "video" | "analysis" | "transcription";
@@ -1225,7 +1248,17 @@ export type Database = {
       member_role: "admin" | "editor" | "approver" | "viewer";
       post_format: "image" | "carousel" | "reels" | "story";
       post_origin: "ai" | "upload";
-      post_status: "planned" | "generating" | "generation_failed" | "pending_approval" | "rejected" | "scheduled" | "publishing" | "published" | "failed" | "paused";
+      post_status:
+        | "planned"
+        | "generating"
+        | "generation_failed"
+        | "pending_approval"
+        | "rejected"
+        | "scheduled"
+        | "publishing"
+        | "published"
+        | "failed"
+        | "paused";
       publish_provider: "meta" | "metricool";
       tenant_status: "active" | "suspended";
     };
@@ -1244,10 +1277,12 @@ export type Tables<
   TableName extends DefaultSchemaTableNameOrOptions extends {
     schema: keyof DatabaseWithoutInternals;
   }
-    ? keyof (DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"] & DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Views"])
+    ? keyof (DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"] &
+        DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Views"])
     : never = never,
 > = DefaultSchemaTableNameOrOptions extends { schema: keyof DatabaseWithoutInternals }
-  ? (DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"] & DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Views"])[TableName] extends {
+  ? (DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"] &
+      DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Views"])[TableName] extends {
       Row: infer R;
     }
     ? R

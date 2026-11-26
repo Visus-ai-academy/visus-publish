@@ -89,3 +89,19 @@ export function imagePrompt(i: { theme: string; title: string; body?: string; fo
     .filter(Boolean)
     .join("\n");
 }
+
+/** Prompt do vídeo do Reels (vertical, curto, sem texto longo na tela). */
+export function videoPrompt(i: { theme: string; brand?: Brand | null; hint?: string; fromImage?: boolean }): string {
+  const b = i.brand ?? {};
+  return [
+    `Vídeo vertical curto (9:16) para Reels do Instagram sobre: ${i.theme}.`,
+    i.fromImage ? "Anime a imagem inicial com movimento de câmera suave e natural, sem trocar de cena." : "Uma cena só, movimento de câmera suave, luz natural, visual profissional.",
+    "Sem texto escrito na tela, sem logotipos de terceiros, sem marca d'água.",
+    b.colors?.length ? `Use as cores da marca no cenário quando fizer sentido: ${b.colors.join(", ")}.` : "",
+    b.tone ? `Clima do vídeo de acordo com o tom: ${b.tone}.` : "",
+    b.is_healthcare ? "Não mostre antes e depois, procedimentos, sangue, resultados prometidos nem pessoas em sofrimento." : "",
+    i.hint ? `Pedido de ajuste de quem está postando (siga, sem quebrar as regras acima): ${i.hint}` : "",
+  ]
+    .filter(Boolean)
+    .join("\n");
+}

@@ -1,7 +1,7 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import { useState, useTransition } from "react";
+import { useEffect, useState, useTransition } from "react";
 import { Button } from "@/components/ui/button";
 import { ErrorNote } from "@/components/ui/states";
 import { Notice } from "@/components/ui/status";
@@ -118,7 +118,7 @@ export function ResubmitButton({ slug, postId }: { slug: string; postId: string 
  * Pedir à IA uma nova legenda ou uma nova arte, com uma orientação opcional.
  * `note` avisa o que acontece com o status (ex.: volta para aprovação).
  */
-export function RegeneratePanel({ slug, postId, format, note }: { slug: string; postId: string; format: Format; note?: string }) {
+export function RegeneratePanel({ slug, postId, format, note, videoEnabled }: { slug: string; postId: string; format: Format; note?: string; videoEnabled?: boolean }) {
   const router = useRouter();
   const [hint, setHint] = useState("");
   const [running, setRunning] = useState<"caption" | "image" | null>(null);
@@ -131,7 +131,10 @@ export function RegeneratePanel({ slug, postId, format, note }: { slug: string; 
       const r = await generateItem(slug, postId, { only, hint: hint.trim() || undefined });
       setRunning(null);
       if (!r.ok) return setMsg({ ok: false, text: r.error });
-      setMsg({ ok: true, text: only === "caption" ? "Nova legenda pronta." : "Nova arte pronta." });
+      setMsg({
+        ok: true,
+        text: r.status === "generating" ? "O vídeo começou a ser gerado. Leva alguns minutos." : only === "caption" ? "Nova legenda pronta." : format === "reels" ? "Novo vídeo pronto." : "Nova arte pronta.",
+      });
       setHint("");
       router.refresh();
     });
@@ -163,8 +166,22 @@ export function RegeneratePanel({ slug, postId, format, note }: { slug: string; 
           <Button type="button" variant="secondary" disabled={pending} onClick={() => run("image")}>
             {running === "image" ? (format === "carousel" ? "Gerando slides…" : "Gerando arte…") : format === "carousel" ? "Novos slides" : "Nova arte"}
           </Button>
+        ) : videoEnabled ? (
+          <Button type="button" variant="secondary" disabled={pending} onClick={() => run("image")}>
+            {running === "image" ? "Pedindo o vídeo…" : "Novo vídeo"}
+          </Button>
         ) : null}
       </div>
     </div>
   );
+}
+
+/** Atualiza a página a cada 20 s enquanto a IA termina (vídeo leva minutos). */
+export function AutoRefresh({ every = 20_000 }: { every?: number }) {
+  const router = useRouter();
+  useEffect(() => {
+    const t = setInterval(() => router.refresh(), every);
+    return () => clearInterval(t);
+  }, [router, every]);
+  return null;
 }

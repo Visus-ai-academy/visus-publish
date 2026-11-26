@@ -41,6 +41,8 @@ beforeAll(async () => {
   [admin, editor, approver, outsider] = await Promise.all(["aip-admin", "aip-editor", "aip-approver", "aip-out"].map(createUser));
   tenant = must(await service.from("tenants").insert({ slug: slug("aip"), name: "AIP" }).select("id").single()).id;
   other = must(await service.from("tenants").insert({ slug: slug("aip-o"), name: "AIP O" }).select("id").single()).id;
+  // Gerações no modo Créditos da Visus precisam de saldo
+  ok(await service.rpc("grant_credits", { p_tenant: tenant, p_amount: 1000, p_reason: "teste" }));
   must(
     await service
       .from("memberships")

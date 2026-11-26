@@ -36,6 +36,15 @@ await db.from("platform_admins").upsert({ user_id: platform });
 const aurora = await tenant("clinica-aurora", "Clínica Aurora", "Profissional");
 const belaPele = await tenant("bela-pele", "Bela Pele Dermatologia", "Essencial");
 
+// Créditos de IA de exemplo (modo Créditos da Visus): só na primeira vez
+for (const t of [aurora, belaPele]) {
+  const { count } = await db.from("credit_ledger").select("id", { count: "exact", head: true }).eq("tenant_id", t);
+  if (!count) {
+    const { error } = await db.rpc("grant_credits", { p_tenant: t, p_amount: 1000, p_reason: "Créditos de exemplo" });
+    if (error) throw error;
+  }
+}
+
 await member(aurora, await user("ana@aurora.local"), "admin");
 await member(aurora, await user("edu@aurora.local"), "editor");
 await member(aurora, await user("dra.lucia@aurora.local"), "approver");

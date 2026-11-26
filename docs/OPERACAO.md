@@ -43,6 +43,7 @@ As rotinas rodam no app em `POST /api/jobs/{rotina}` com `Authorization: Bearer 
 | Rotina | Frequência | O que faz |
 |---|---|---|
 | `publish-due` | a cada minuto | publica posts vencidos (lock com `claim_due_posts`, limite da Meta consultado antes) e confirma os enviados ao Metricool |
+| `poll-generation` | a cada minuto (já roda junto com `publish-due`) | confere os vídeos da IA em andamento; pronto vira a mídia do post, falha estorna os créditos, mais de 30 min dá erro |
 | `refresh-tokens` | 1× por dia | renova tokens da Meta que vencem em menos de 10 dias; falha → conta "Reconectar". Sem app da Meta, não faz nada |
 
 Opção A, pelo próprio Supabase (pg_cron + pg_net). Rode no SQL Editor do projeto, trocando domínio e segredo:
@@ -80,9 +81,21 @@ A Meta (ou o Metricool, que copia o arquivo para ele) baixa a mídia por uma URL
 
 - A chave da OpenAI ou do Gemini é cadastrada pelo admin da plataforma em **Admin → IA** (`/admin/ia`). O app confere a chave no provedor e guarda no Vault (`ai_platform_keys` + `store_platform_ai_key`); ela não volta para a tela.
 - Modelos ficam em `ai_models` (`openai:caption`, `gemini:caption`) e podem ser trocados na mesma tela.
-- Cliente em `ai_settings.billing_mode = 'own'` usa só as chaves dele (`ai_credentials`); a tela para isso vem na Fase 3.
+- Cliente em `ai_settings.billing_mode = 'own'` usa só as chaves dele (`ai_credentials`), cadastradas em Integrações de IA (seção 6).
 - Na tela Enviar criativos, o botão manda à IA a imagem reduzida (ou 4 quadros do vídeo, sem áudio) gerada no navegador. Cada geração fica em `generation_jobs`, sem as imagens.
 - Marca de saúde (`brand_profiles.is_healthcare`): o servidor confere o texto final e junta os riscos que a IA apontou em `posts.compliance_flags`. Post com alerta vai para aprovação mesmo em conta "publica direto".
 - Planejamento (`/[tenant]/planejamento`): temas sugeridos pela IA viram posts `planned` de origem `ai`. "Gerar legendas e criativos" chama uma geração por post (`begin_generation` → `generatePost` → `finish_generation`), cada uma numa chamada de até 300 s. Reels sai só com legenda e volta a `planned` esperando o vídeo da equipe.
 - Na tela Admin → IA, a lista de modelos vem da API do provedor com a chave guardada (`read_platform_ai_key`); sem resposta, mostra uma lista de reserva.
 - Vídeo em Enviar criativos: o navegador também extrai até 3 min de áudio (WAV 16 kHz). Gemini ouve junto com os quadros; na OpenAI o áudio é transcrito antes (modelo `openai:transcription` em `ai_models`). Se a transcrição falhar, a legenda sai só pelos quadros.
+
+## 6. Fase 3: provedores, créditos e chave própria
+
+- **Integrações de IA** (`/[tenant]/ia`, só o admin do cliente muda): provedor de texto (OpenAI ou Gemini), de arte (OpenAI Images ou Gemini "Nano Banana") e de vídeo do Reels (desligado, Google Veo ou Higgsfield). Se o escolhido não tiver chave, a geração usa o outro que tiver.
+- **Cobrança** (`ai_settings.billing_mode`):
+  - `platform` (Créditos da Visus): usa as chaves de Admin → IA. Cada geração chama `charge_credits` antes da IA (trava o saldo do cliente; sem saldo, a geração para com "Os créditos de IA deste cliente acabaram") e estorna com `grant_credits` se a IA falhar. O custo de cada modelo é `ai_models.unit_cost_credits`, editável em Admin → IA (carrossel conta cada slide; vídeo com quadro inicial conta a arte + o vídeo).
+  - `own` (Chave própria): o admin do cliente cola a chave em Integrações de IA; o servidor confere e grava no Vault com `store_tenant_ai_key`. Não debita créditos.
+- **Créditos**: a equipe da Visus lança em Admin → Clientes (número negativo retira). Fica em `credit_ledger` (extrato do cliente) e em `audit_log`. Na migração 20261201000000, cada cliente que já existia recebeu 1000 créditos iniciais; clientes novos começam com 0.
+- **Vídeo do Reels**: com vídeo ligado, "Gerar" num Reels faz a legenda na hora e pede o vídeo ao provedor (job `video` em `generation_jobs`, post em "Gerando"). A rotina `poll-generation` (dentro de `publish-due`) confere a cada minuto; a tela do post atualiza sozinha.
+  - Veo usa a chave do **Gemini** (modelo `gemini:video`, ex.: `veo-3.0-fast-generate-001`), texto → vídeo 9:16.
+  - Higgsfield usa a chave `KEY_ID:KEY_SECRET` do console.higgsfield.ai (modelo `higgsfield:video`, o caminho do endpoint, ex.: `wan/v2.6/image-to-video`). Modelos "image-to-video" animam um quadro inicial que a IA de arte gera antes. Confira o primeiro vídeo real: a API muda por modelo.
+- Canva ficou para depois (decisão de 26/11).

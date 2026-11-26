@@ -75,7 +75,7 @@ export default async function PlanItemPage({ params }: PageProps<"/[tenant]/plan
           </div>
           <div className="flex flex-col gap-3">
             {canEdit && EDITABLE.has(post.status) && post.format !== "story" ? (
-              <CaptionEditor slug={tenant.slug} postId={post.id} initial={post.caption ?? ""} />
+              <CaptionEditor key={post.caption ?? ""} slug={tenant.slug} postId={post.id} initial={post.caption ?? ""} />
             ) : (
               <p className="whitespace-pre-wrap text-[14px]">{post.caption || (post.format === "story" ? "Stories não têm legenda." : "Sem legenda ainda.")}</p>
             )}

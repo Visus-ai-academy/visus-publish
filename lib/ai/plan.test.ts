@@ -65,6 +65,15 @@ describe("provedores de imagem", () => {
     expect(img).toEqual({ mime: "image/jpeg", bytes: new Uint8Array([1, 2, 3]) });
   });
 
+  it("DALL·E 3 pede base64 sem output_format, no vertical 1024x1792", async () => {
+    let body: Record<string, unknown> = {};
+    const f = (async (_: string, init: RequestInit) => ((body = JSON.parse(String(init.body))), Response.json({ data: [{ b64_json: "AQID" }] }))) as unknown as typeof fetch;
+    const img = await imageProvider("openai", { openai: { fetch: f } }).generateImage({ ...req, model: "dall-e-3" });
+    expect(body).toMatchObject({ model: "dall-e-3", size: "1024x1792", response_format: "b64_json" });
+    expect(body).not.toHaveProperty("output_format");
+    expect(img.mime).toBe("image/png");
+  });
+
   it("Gemini lê inlineData e manda a proporção", async () => {
     let body: { generationConfig?: { imageConfig?: { aspectRatio?: string } } } = {};
     const f = (async (_: string, init: RequestInit) => (

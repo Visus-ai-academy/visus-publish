@@ -1,9 +1,11 @@
 import Link from "next/link";
 import { StatusDot } from "@/components/ui/status";
+import { FormatTag } from "@/components/ui/format-tag";
 import { Thumb } from "@/components/ui/thumb";
+import type { Format } from "@/lib/posts/upload";
 import type { PostStatus } from "@/lib/posts/transitions";
 
-export type GridPost = { id: string; theme: string; status: PostStatus; date: string; time: string; href: string; thumb: { url?: string | null; kind?: string | null; extra?: number } };
+export type GridPost = { id: string; theme: string; format: Format; status: PostStatus; date: string; time: string; href: string; thumb: { url?: string | null; kind?: string | null; extra?: number } };
 
 const WEEKDAYS = ["Dom", "Seg", "Ter", "Qua", "Qui", "Sex", "Sáb"];
 
@@ -47,8 +49,11 @@ export function MonthGrid({ month, today, posts }: { month: string; today: strin
                               <Thumb {...p.thumb} alt={p.theme} small />
                               <span className="min-w-0 flex-1">
                                 <span className="block truncate text-[13px] font-medium">{p.theme}</span>
-                                <span className="flex flex-wrap items-center gap-x-1.5 text-[12px] text-text-2">
+                                <span className="mt-0.5 flex flex-wrap items-center gap-x-1.5 gap-y-1 text-[12px] text-text-2">
+                                  <FormatTag format={p.format} />
                                   <span className="tabular-nums">{p.time}</span>
+                                </span>
+                                <span className="mt-1 block">
                                   <StatusDot status={p.status} />
                                 </span>
                               </span>

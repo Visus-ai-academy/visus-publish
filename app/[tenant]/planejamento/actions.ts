@@ -4,7 +4,7 @@ import { revalidatePath } from "next/cache";
 import { z } from "zod";
 import { complianceFor } from "@/lib/ai/caption";
 import { generatePost, PlanError, suggestCadence, suggestThemes } from "@/lib/ai/plan";
-import { cadenceSchema, monthSlots, sortSlots, type Slot } from "@/lib/plan/cadence";
+import { cadenceSchema, monthSlots, sortSlots, takenKeys, type Slot } from "@/lib/plan/cadence";
 import { loadCadence } from "@/lib/plan/load";
 import { providersFromEnv } from "@/lib/ai/providers";
 import { can } from "@/lib/auth/permissions";
@@ -78,12 +78,12 @@ export async function suggestPlan(slug: string, raw: unknown): Promise<Result<{ 
     const { start, end } = monthRange(s.month, tenant.timezone);
     const { data: inMonth } = await supabase
       .from("posts")
-      .select("scheduled_at")
+      .select("scheduled_at, format")
       .eq("tenant_id", tenant.id)
       .eq("ig_account_id", s.accountId)
       .gte("scheduled_at", start.toISOString())
       .lt("scheduled_at", end.toISOString());
-    const taken = new Set((inMonth ?? []).map((p) => Object.values(utcToZoned(new Date(p.scheduled_at), tenant.timezone)).join(" ")));
+    const taken = takenKeys(inMonth ?? [], tenant.timezone);
     const slots = monthSlots(s.month, cadence.slots, firstDay, taken).filter((x) => zonedToUtc(x.date, x.time, tenant.timezone).getTime() > Date.now() + 60 * 60_000);
     if (!slots.length) return { ok: false, error: "Todas as vagas da cadência deste mês já têm tema." };
 
@@ -169,33 +169,31 @@ export async function proposeCadence(slug: string, raw: unknown): Promise<Result
 }
 
 /** Gera legenda e arte de um item do plano (uma chamada por post, para caber no tempo da função). */
-export async function generateItem(slug: string, postId: string): Promise<Result<{ status: string }>> {
+const regenerateInput = z
+  .object({
+    only: z.enum(["caption", "image"]).optional(),
+    hint: z.string().trim().max(500, "A orientação passa de 500 caracteres.").optional(),
+  })
+  .optional();
+
+const NOTE = { caption: "nova legenda com IA", image: "nova arte com IA" } as const;
+
+/** Gera legenda e arte; com `only`, refaz só uma das partes, seguindo a orientação opcional. */
+export async function generateItem(slug: string, postId: string, raw?: unknown): Promise<Result<{ status: string }>> {
   try {
     const { tenant, supabase } = await editor(slug);
     const id = uuid.parse(postId);
-    const { error } = await supabase.rpc("begin_generation", { p_post: id });
+    const parsed = regenerateInput.safeParse(raw);
+    if (!parsed.success) return { ok: false, error: parsed.error.issues[0].message };
+    const { only, hint } = parsed.data ?? {};
+    const { error } = await supabase.rpc("begin_generation", { p_post: id, p_note: only ? NOTE[only] : undefined });
     if (error) return { ok: false, error: error.code === "55P03" ? "Este post já está sendo gerado." : "Este post não pode ser gerado agora." };
-    const r = await generatePost(createAdminClient(), tenant.id, id, { providers: providersFromEnv() });
+    const r = await generatePost(createAdminClient(), tenant.id, id, { providers: providersFromEnv(), only, hint: hint || undefined });
     refresh(slug);
     revalidatePath(`/${slug}/planejamento/${id}`);
     return r.error ? { ok: false, error: r.error } : { ok: true, status: r.status };
   } catch (e) {
     return { ok: false, error: e instanceof PlanError ? e.message : "Não foi possível gerar agora." };
-  }
-}
-
-export async function removePlanItem(slug: string, postId: string): Promise<Result> {
-  try {
-    const { tenant, supabase } = await editor(slug);
-    const id = uuid.parse(postId);
-    const { data } = await supabase.from("posts").delete().eq("tenant_id", tenant.id).eq("id", id).in("status", [...EDITABLE]).select("id");
-    if (!data?.length) return { ok: false, error: "Só itens ainda não agendados podem ser removidos." };
-    const { data: files } = await supabase.storage.from("media").list(`${tenant.id}/${id}`);
-    if (files?.length) await supabase.storage.from("media").remove(files.map((f) => `${tenant.id}/${id}/${f.name}`));
-    refresh(slug);
-    return { ok: true };
-  } catch (e) {
-    return { ok: false, error: e instanceof PlanError ? e.message : "Não foi possível remover." };
   }
 }
 

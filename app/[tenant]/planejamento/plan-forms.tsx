@@ -8,7 +8,8 @@ import { Field, Input, Select } from "@/components/ui/input";
 import { ErrorNote } from "@/components/ui/states";
 import { Notice } from "@/components/ui/status";
 import { FORMATS, FORMAT_LABELS } from "@/lib/posts/upload";
-import { addPlanItem, generateItem, removePlanItem, suggestPlan } from "./actions";
+import { addPlanItem, generateItem, suggestPlan } from "./actions";
+import { DeletePostButton } from "../delete-post-button";
 
 export function AddItemForm({ slug, accountId, defaultDate }: { slug: string; accountId: string; defaultDate: string }) {
   const [pending, start] = useTransition();
@@ -149,27 +150,25 @@ export function GenerateAll({ slug, ids }: { slug: string; ids: string[] }) {
   );
 }
 
-export function RowActions({ slug, postId, canGenerate, regenerate }: { slug: string; postId: string; canGenerate: boolean; regenerate: boolean }) {
+export function RowActions({ slug, postId, canGenerate, regenerate, canDelete, warn }: { slug: string; postId: string; canGenerate: boolean; regenerate: boolean; canDelete: boolean; warn?: string }) {
   const [pending, start] = useTransition();
   const [error, setError] = useState<string | null>(null);
   const btn = "h-10 rounded-md px-2.5 text-[13px] font-semibold transition-[background-color,transform] duration-150 hover:bg-muted active:scale-[.98] disabled:opacity-60";
   return (
-    <div className="flex flex-wrap items-center justify-end gap-1">
-      {canGenerate ? (
-        <button className={btn} disabled={pending} onClick={() => start(async () => setError(((r) => (r.ok ? null : r.error))(await generateItem(slug, postId))))}>
-          {pending ? "Gerando…" : regenerate ? "Gerar de novo" : "Gerar"}
-        </button>
-      ) : null}
-      <Link href={`/${slug}/planejamento/${postId}`} className={`${btn} inline-flex items-center`}>
-        Abrir
-      </Link>
-      {canGenerate ? (
-        <button className={`${btn} text-text-2`} disabled={pending} onClick={() => start(async () => setError(((r) => (r.ok ? null : r.error))(await removePlanItem(slug, postId))))}>
-          Remover
-        </button>
-      ) : null}
+    <div className="flex flex-col items-end gap-1">
+      <div className="flex flex-nowrap items-center justify-end gap-1 whitespace-nowrap">
+        {canGenerate ? (
+          <button className={btn} disabled={pending} onClick={() => start(async () => setError(((r) => (r.ok ? null : r.error))(await generateItem(slug, postId))))}>
+            {pending ? "Gerando…" : regenerate ? "Gerar de novo" : "Gerar"}
+          </button>
+        ) : null}
+        <Link href={`/${slug}/planejamento/${postId}`} className={`${btn} inline-flex items-center`}>
+          Abrir
+        </Link>
+        {canDelete ? <DeletePostButton slug={slug} postId={postId} warn={warn} onError={setError} /> : null}
+      </div>
       {error ? (
-        <span role="alert" className="basis-full text-right text-[13px] text-danger">
+        <span role="alert" className="max-w-72 text-right text-[13px] text-danger">
           {error}
         </span>
       ) : null}

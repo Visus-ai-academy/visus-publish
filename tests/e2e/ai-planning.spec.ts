@@ -43,7 +43,13 @@ test("editor pede temas do mês, gera legendas e artes e envia o vídeo do Reels
   await page.getByLabel("Nicho do cliente").fill("Clínica odontológica de estética");
   await page.getByRole("button", { name: "Sugerir cadência" }).click();
   await expect(page.getByText("Sugestão da IA: Segunda concentra", { exact: false })).toBeVisible();
-  await expect(page.getByLabel("Formato da vaga 1")).toHaveValue("reels");
+  await expect(page.getByLabel("Formato do slot 1")).toHaveValue("reels");
+  await expect(page.getByText("2 posts por semana em 1 dia")).toBeVisible();
+  // Um slot vale para vários dias: "Todos os dias" vira 7 posts de uma vez
+  await page.getByRole("button", { name: "Adicionar slot de post" }).click();
+  await page.getByRole("group", { name: "Dias do slot 3" }).getByRole("button", { name: "Todos os dias" }).click();
+  await expect(page.getByText("9 posts por semana em 7 dias")).toBeVisible();
+  await page.getByRole("button", { name: "Remover slot 3" }).click();
   await expect(page.getByText("2 posts por semana em 1 dia")).toBeVisible();
   await page.getByRole("button", { name: "Salvar cadência" }).click();
   await expect(page.getByText("Cadência salva.", { exact: false })).toBeVisible();
@@ -66,7 +72,7 @@ test("editor pede temas do mês, gera legendas e artes e envia o vídeo do Reels
   await page.getByLabel("Vídeo do Reels").setInputFiles({ name: "reels.mp4", mimeType: "video/mp4", buffer: Buffer.from("fake-video") });
   await page.getByRole("button", { name: "Enviar e agendar" }).click();
   await expect(page.locator("video")).toBeVisible();
-  await expect(page.getByRole("link", { name: "Voltar ao planejamento" }).locator("..").getByText("Agendado")).toBeVisible();
+  await expect(page.getByRole("main").getByText("Agendado", { exact: true }).first()).toBeVisible();
 });
 
 test("calendário alterna entre lista e grade do mês", async ({ page }) => {

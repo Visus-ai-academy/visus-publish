@@ -147,6 +147,49 @@ describe("gerar legenda e arte", () => {
   });
 });
 
+describe("gerar de novo só a legenda ou só a arte", () => {
+  it("agendado volta a gerar só a legenda com a orientação, mantém a arte e volta para a agenda", async () => {
+    const id = await planned(direct, "image");
+    ok(await editor.client.rpc("begin_generation", { p_post: id }));
+    expect(await generatePost(service, tenant, id, { providers: fakeAi().cfg })).toEqual({ status: "scheduled" });
+    const before = must(await service.from("post_media").select("storage_path").eq("post_id", id));
+
+    // Aprovadora e outro cliente não pedem; editor pede
+    expect((await approver.client.rpc("begin_generation", { p_post: id })).error).not.toBeNull();
+    expect((await outsider.client.rpc("begin_generation", { p_post: id })).error).not.toBeNull();
+    ok(await editor.client.rpc("begin_generation", { p_post: id, p_note: "nova legenda com IA" }));
+    const { cfg, calls } = fakeAi({ caption: { tema: "x", legenda: "Legenda mais curta.", hashtags: [], riscos: [] } });
+    expect(await generatePost(service, tenant, id, { providers: cfg, only: "caption", hint: "mais curta" })).toEqual({ status: "scheduled" });
+    expect(calls).toEqual({ chat: 1, images: 0 });
+    const post = must(await service.from("posts").select("caption, is_ai_generated").eq("id", id).single());
+    expect(post).toEqual({ caption: "Legenda mais curta.", is_ai_generated: true });
+    expect(must(await service.from("post_media").select("storage_path").eq("post_id", id))).toEqual(before);
+  });
+
+  it("aguardando aprovação gera só a arte nova e volta para aprovação", async () => {
+    const id = await planned(approval, "image");
+    ok(await editor.client.rpc("begin_generation", { p_post: id }));
+    expect(await generatePost(service, tenant, id, { providers: fakeAi().cfg })).toEqual({ status: "pending_approval" });
+    const caption = must(await service.from("posts").select("caption").eq("id", id).single()).caption;
+    const before = must(await service.from("post_media").select("storage_path").eq("post_id", id));
+
+    ok(await editor.client.rpc("begin_generation", { p_post: id, p_note: "nova arte com IA" }));
+    const { cfg, calls } = fakeAi();
+    expect(await generatePost(service, tenant, id, { providers: cfg, only: "image", hint: "fundo claro" })).toEqual({ status: "pending_approval" });
+    expect(calls).toEqual({ chat: 0, images: 1 });
+    expect(must(await service.from("posts").select("caption").eq("id", id).single()).caption).toBe(caption);
+    const after = must(await service.from("post_media").select("storage_path").eq("post_id", id));
+    expect(after).toHaveLength(1);
+    expect(after[0].storage_path).not.toBe(before[0].storage_path);
+  });
+
+  it("post enviado pela equipe não volta a ser gerado", async () => {
+    const id = must(await editor.client.from("posts").insert({ tenant_id: tenant, ig_account_id: direct, scheduled_at: future(), theme: "Upload", format: "image", origin: "upload" }).select("id").single()).id;
+    must(await service.from("posts").update({ status: "pending_approval" }).eq("id", id).select("id"));
+    expect((await editor.client.rpc("begin_generation", { p_post: id })).error?.code).toBe("22023");
+  });
+});
+
 describe("sugerir temas", () => {
   it("dá um tema por vaga da cadência e não aceita conta de outro", async () => {
     const { cfg } = fakeAi({ themes: { temas: [{ vaga: 1, tema: "Dica A" }, { vaga: 2, tema: "Bastidores" }] } });

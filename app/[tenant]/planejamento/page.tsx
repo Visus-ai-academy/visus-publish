@@ -10,13 +10,19 @@ import { FORMAT_LABELS } from "@/lib/posts/upload";
 import { resolveTenant } from "@/lib/tenant";
 import { monthRange, shiftMonth, tomorrowIn, utcToZoned, zonedToUtc } from "@/lib/time";
 import { loadCadence } from "@/lib/plan/load";
-import { monthSlots, weeklySummary } from "@/lib/plan/cadence";
+import { monthSlots, takenKeys, weeklySummary } from "@/lib/plan/cadence";
+import { DELETABLE_STATUSES } from "@/lib/posts/transitions";
 import { AddItemForm, GenerateAll, RowActions, SuggestForm } from "./plan-forms";
 
 // Cada geração (legenda + arte) roda numa chamada; carrossel pode levar alguns minutos
 export const maxDuration = 300;
 
 const GENERATABLE = new Set(["planned", "rejected", "generation_failed"]);
+const DELETABLE = new Set<string>(DELETABLE_STATUSES);
+const WARN: Record<string, string> = {
+  scheduled: "Este post já está agendado e deixa de ser publicado.",
+  pending_approval: "Este post está aguardando aprovação.",
+};
 
 export default async function PlanningPage({ params, searchParams }: PageProps<"/[tenant]/planejamento">) {
   const { tenant, role, supabase } = await resolveTenant((await params).tenant);
@@ -64,7 +70,7 @@ export default async function PlanningPage({ params, searchParams }: PageProps<"
   const cadence = await loadCadence(supabase, tenant.id, account.id);
   const soonest = new Date().getTime() + 60 * 60_000;
   const today = utcToZoned(new Date(), tenant.timezone).date;
-  const taken = new Set((rows ?? []).map((r) => Object.values(utcToZoned(new Date(r.scheduled_at), tenant.timezone)).join(" ")));
+  const taken = takenKeys(rows ?? [], tenant.timezone);
   const freeSlots =
     month < current ? [] : monthSlots(month, cadence.slots, today.startsWith(month) ? Number(today.slice(8)) + 1 : 1, taken).filter((x) => zonedToUtc(x.date, x.time, tenant.timezone).getTime() > soonest);
 
@@ -179,8 +185,15 @@ export default async function PlanningPage({ params, searchParams }: PageProps<"
                           <td className="py-3 pr-4 text-text-2">{FORMAT_LABELS[r.format]}</td>
                           <td className="py-3 pr-4 text-text-2">{r.origin === "upload" ? "Equipe" : providerLabel(r.media_provider ?? r.caption_provider)}</td>
                           <td className="py-3 pr-4">{waitingVideo ? <span className="text-text-2">Aguardando vídeo</span> : <StatusDot status={r.status} />}</td>
-                          <td className="py-3 pr-4 text-right">
-                            {canEdit ? <RowActions slug={tenant.slug} postId={r.id} canGenerate={r.origin === "ai" && GENERATABLE.has(r.status)} regenerate={!!r.caption} /> : null}
+                          <td className="w-px py-3 pr-4 text-right whitespace-nowrap">
+                            {canEdit ? <RowActions
+                                slug={tenant.slug}
+                                postId={r.id}
+                                canGenerate={r.origin === "ai" && GENERATABLE.has(r.status)}
+                                regenerate={!!r.caption}
+                                canDelete={DELETABLE.has(r.status)}
+                                warn={WARN[r.status]}
+                              /> : null}
                           </td>
                         </tr>
                       );

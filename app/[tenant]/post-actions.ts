@@ -5,7 +5,7 @@ import { z } from "zod";
 import { complianceFor, SuggestError, suggestCaption, suggestInputSchema, type Suggestion } from "@/lib/ai/caption";
 import { providersFromEnv } from "@/lib/ai/providers";
 import { can } from "@/lib/auth/permissions";
-import { reviewPost, transitionPost } from "@/lib/posts/transitions";
+import { DELETABLE_STATUSES, reviewPost, transitionPost } from "@/lib/posts/transitions";
 import { draftSchema, kindOf, storagePath, validateFiles } from "@/lib/posts/upload";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { resolveTenant } from "@/lib/tenant";
@@ -161,6 +161,25 @@ export async function cancelSchedule(slug: string, postId: string): Promise<Resu
   } catch {
     return { ok: false, error: "Não foi possível cancelar." };
   }
+}
+
+/**
+ * Exclui o post e seus arquivos. Vale também para aprovados e agendados: até a rotina
+ * pegar o post nada foi enviado ao Metricool ou à Meta, então não há o que desfazer lá fora.
+ */
+export async function deletePost(slug: string, postId: string): Promise<Result> {
+  const { tenant, role, supabase } = await resolveTenant(slug);
+  if (!can(role, "edit_content")) return { ok: false, error: "Seu papel não permite excluir posts." };
+  const id = uuid.safeParse(postId);
+  if (!id.success) return { ok: false, error: "Post inválido." };
+  const { data, error } = await supabase.from("posts").delete().eq("tenant_id", tenant.id).eq("id", id.data).in("status", [...DELETABLE_STATUSES]).select("id");
+  if (error) return { ok: false, error: "Não foi possível excluir." };
+  if (!data?.length) return { ok: false, error: "Este post não pode ser excluído: está sendo publicado ou já foi publicado." };
+  const { data: files } = await supabase.storage.from("media").list(`${tenant.id}/${id.data}`);
+  if (files?.length) await supabase.storage.from("media").remove(files.map((f) => `${tenant.id}/${id.data}/${f.name}`));
+  refresh(slug);
+  revalidatePath(`/${slug}/planejamento`);
+  return { ok: true };
 }
 
 export async function retryPublish(slug: string, postId: string): Promise<Result> {

@@ -12,6 +12,8 @@ import type { MonthSlot, Slot } from "@/lib/plan/cadence";
 
 type Db = SupabaseClient<Database>;
 type Opts = { providers?: ProvidersConfig };
+/** Gerar de novo só uma parte, com uma orientação opcional de quem pediu. */
+export type RegenerateOpts = { only?: "caption" | "image"; hint?: string };
 
 export class PlanError extends Error {}
 
@@ -94,7 +96,7 @@ export async function suggestCadence(
  * Termina sempre com finish_generation: sucesso → aprovação/agendado (ou 'planned' no Reels,
  * que espera o vídeo da equipe); erro → 'generation_failed' com a mensagem.
  */
-export async function generatePost(db: Db, tenantId: string, postId: string, opts: Opts = {}): Promise<{ status: string; error?: string }> {
+export async function generatePost(db: Db, tenantId: string, postId: string, opts: Opts & RegenerateOpts = {}): Promise<{ status: string; error?: string }> {
   const { data: post } = await db.from("posts").select("id, theme, format, status, ig_account_id").eq("tenant_id", tenantId).eq("id", postId).maybeSingle();
   if (!post) throw new PlanError("Post não encontrado.");
   if (post.status !== "generating") throw new PlanError("Este post não está em geração.");
@@ -111,51 +113,67 @@ export async function generatePost(db: Db, tenantId: string, postId: string, opt
     const brand = await loadBrand(db, tenantId, post.ig_account_id);
     const format = post.format as Format;
     const wantsImage = format !== "reels";
+    const doCaption = opts.only !== "image";
+    const doImage = wantsImage && opts.only !== "caption";
+    const hint = opts.hint?.trim() || undefined;
+    if (!doCaption && !doImage) throw new PlanError("Reels não tem arte gerada pela IA. Envie o vídeo no post.");
+    // Só a arte de um carrossel ainda pede o roteiro dos slides à IA de texto
+    const needText = doCaption || format === "carousel";
 
-    const textAi = await pickProvider(db, tenantId, "caption");
-    const imageAi = wantsImage ? await pickProvider(db, tenantId, "image") : null;
-    if (!textAi || (wantsImage && !imageAi)) throw new PlanError(NO_KEY);
+    const textAi = needText ? await pickProvider(db, tenantId, "caption") : null;
+    const imageAi = doImage ? await pickProvider(db, tenantId, "image") : null;
+    if ((needText && !textAi) || (doImage && !imageAi)) throw new PlanError(NO_KEY);
 
     // 1. Legenda (e roteiro dos slides no carrossel)
-    const p = captionPrompt({ format, mediaKind: "image", frameCount: 0, theme: post.theme, username: account?.username ?? "", brand });
-    const raw = await captionProvider(textAi.id, opts.providers)
-      .generateCaption({ apiKey: textAi.key, model: textAi.model, system: p.system, user: p.user, images: [] })
-      .catch((e: unknown) => {
-        throw e instanceof AiProviderError ? new AiProviderError(`A legenda falhou. ${e.message}`, e.status) : e;
-      });
-    // O tema já vem do planejamento; só a legenda (e os slides) importam aqui
-    const parsed = captionOutputSchema.safeParse(raw && typeof raw === "object" ? { ...raw, tema: post.theme } : raw);
-    if (!parsed.success) throw new AiProviderError("A IA respondeu num formato inesperado. Tente de novo.");
-    const { caption } = composeCaption(parsed.data, format, brand?.default_hashtags ?? []);
-    const flags = brand?.is_healthcare ? mergeFlags(healthFlags(`${post.theme}\n${caption}`), parsed.data.riscos) : [];
-    await logJob(db, { tenant_id: tenantId, post_id: postId, task: "caption", provider: textAi.id, model: textAi.model, status: "succeeded", request: { source: "theme" }, result: { caption, flags } });
+    let caption: string | null = null;
+    let slides: { titulo: string; texto: string }[] = [];
+    let flags: string[] = [];
+    if (textAi) {
+      const p = captionPrompt({ format, mediaKind: "image", frameCount: 0, theme: post.theme, username: account?.username ?? "", brand, hint: doCaption ? hint : undefined });
+      const raw = await captionProvider(textAi.id, opts.providers)
+        .generateCaption({ apiKey: textAi.key, model: textAi.model, system: p.system, user: p.user, images: [] })
+        .catch((e: unknown) => {
+          throw e instanceof AiProviderError ? new AiProviderError(`${doCaption ? "A legenda" : "O roteiro dos slides"} falhou. ${e.message}`, e.status) : e;
+        });
+      // O tema já vem do planejamento; só a legenda (e os slides) importam aqui
+      const parsed = captionOutputSchema.safeParse(raw && typeof raw === "object" ? { ...raw, tema: post.theme } : raw);
+      if (!parsed.success) throw new AiProviderError("A IA respondeu num formato inesperado. Tente de novo.");
+      slides = parsed.data.slides;
+      if (doCaption) {
+        caption = composeCaption(parsed.data, format, brand?.default_hashtags ?? []).caption;
+        flags = brand?.is_healthcare ? mergeFlags(healthFlags(`${post.theme}\n${caption}`), parsed.data.riscos) : [];
+        await logJob(db, { tenant_id: tenantId, post_id: postId, task: "caption", provider: textAi.id, model: textAi.model, status: "succeeded", request: { source: "theme", hint: hint ?? null }, result: { caption, flags } });
+      }
+    }
 
     // 2. Arte(s)
     const prompts: string[] = [];
     if (imageAi) {
       if (format === "carousel") {
-        const slides = parsed.data.slides.length >= 2 ? parsed.data.slides.slice(0, 6) : [{ titulo: post.theme, texto: "" }, { titulo: "Saiba mais", texto: "" }];
-        slides.forEach((s, i) => prompts.push(imagePrompt({ theme: post.theme, title: s.titulo, body: s.texto, format, brand, slide: { n: i + 1, total: slides.length } })));
+        const use = slides.length >= 2 ? slides.slice(0, 6) : [{ titulo: post.theme, texto: "" }, { titulo: "Saiba mais", texto: "" }];
+        use.forEach((sl, i) => prompts.push(imagePrompt({ theme: post.theme, title: sl.titulo, body: sl.texto, format, brand, hint, slide: { n: i + 1, total: use.length } })));
       } else {
-        prompts.push(imagePrompt({ theme: post.theme, title: post.theme, format, brand }));
+        prompts.push(imagePrompt({ theme: post.theme, title: post.theme, format, brand, hint }));
       }
     }
     // A legenda fica salva mesmo se a arte falhar (gerar de novo sobrescreve)
-    const { error: capErr } = await db
-      .from("posts")
-      .update({ caption: caption || null, caption_provider: textAi.id })
-      .eq("tenant_id", tenantId)
-      .eq("id", postId);
-    if (capErr) throw new Error(`posts: ${capErr.message}`);
+    if (doCaption && textAi) {
+      const { error: capErr } = await db
+        .from("posts")
+        .update({ caption: caption || null, caption_provider: textAi.id })
+        .eq("tenant_id", tenantId)
+        .eq("id", postId);
+      if (capErr) throw new Error(`posts: ${capErr.message}`);
+    }
 
     const images = [];
     try {
       for (const prompt of prompts) images.push(await imageProvider(imageAi!.id, opts.providers).generateImage({ apiKey: imageAi!.key, model: imageAi!.model, prompt, aspect: ASPECT[format] }));
     } catch (e) {
-      if (e instanceof AiProviderError) throw new AiProviderError(`A legenda foi gerada, mas a arte falhou. ${e.message}`, e.status);
+      if (e instanceof AiProviderError) throw new AiProviderError(doCaption ? `A legenda foi gerada, mas a arte falhou. ${e.message}` : `A arte falhou. ${e.message}`, e.status);
       throw e;
     }
-    if (imageAi) await logJob(db, { tenant_id: tenantId, post_id: postId, task: "image", provider: imageAi.id, model: imageAi.model, status: "succeeded", request: { images: prompts.length } });
+    if (imageAi) await logJob(db, { tenant_id: tenantId, post_id: postId, task: "image", provider: imageAi.id, model: imageAi.model, status: "succeeded", request: { images: prompts.length, hint: hint ?? null } });
 
     // 3. Troca a mídia antiga (gerar de novo) pela nova
     if (images.length) {
@@ -176,12 +194,14 @@ export async function generatePost(db: Db, tenantId: string, postId: string, opt
       if (error) throw new Error(`post_media: ${error.message}`);
     }
 
-    const { error: upErr } = await db
-      .from("posts")
-      .update({ caption: caption || null, caption_provider: textAi.id, media_provider: imageAi?.id ?? null, is_ai_generated: images.length > 0 })
-      .eq("tenant_id", tenantId)
-      .eq("id", postId);
-    if (upErr) throw new Error(`posts: ${upErr.message}`);
+    if (images.length) {
+      // Nova arte da IA: troca o provedor e mantém o selo de conteúdo gerado por IA
+      const { error: upErr } = await db.from("posts").update({ media_provider: imageAi!.id, is_ai_generated: true }).eq("tenant_id", tenantId).eq("id", postId);
+      if (upErr) throw new Error(`posts: ${upErr.message}`);
+    } else if (!opts.only) {
+      const { error: upErr } = await db.from("posts").update({ media_provider: null, is_ai_generated: false }).eq("tenant_id", tenantId).eq("id", postId);
+      if (upErr) throw new Error(`posts: ${upErr.message}`);
+    }
     if (flags.length) {
       const { error } = await db.rpc("add_post_flags", { p_post: postId, p_flags: flags });
       if (error) throw new Error(`add_post_flags: ${error.message}`);

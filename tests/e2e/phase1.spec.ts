@@ -23,7 +23,7 @@ function tomorrow() {
 
 async function upload(page: Page, account: RegExp, theme: string) {
   await page.goto("/clinica-aurora/criativos");
-  await expect(page.getByRole("heading", { name: "Criativos prontos" })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Enviar criativos" })).toBeVisible();
   await page.getByLabel("Selecione fotos, vídeos ou artes prontas").setInputFiles({ name: "arte.png", mimeType: "image/png", buffer: PNG });
   await page.getByLabel("Conta").selectOption({ label: (await page.getByLabel("Conta").locator("option").filter({ hasText: account }).textContent())! });
   await page.getByLabel("Data").fill(tomorrow().date);
@@ -48,6 +48,22 @@ test("editor sobe criativo para conta que publica direto e cancela", async ({ pa
   await expect(row.getByText("Agendado")).toBeVisible();
   await row.getByRole("button", { name: "Cancelar" }).click();
   await expect(row.getByText("Planejado")).toBeVisible();
+});
+
+test("editor exclui post já agendado, com confirmação", async ({ page }) => {
+  const theme = `Excluir ${Date.now()}`;
+  await loginOk(page, "edu@aurora.local");
+  await upload(page, /aurora\.estetica/, theme);
+  await expect(page.getByText("Post agendado.")).toBeVisible();
+
+  const row = await calendarRow(page, theme);
+  await expect(row.getByText("Agendado")).toBeVisible();
+  await row.getByRole("button", { name: "Excluir" }).click();
+  await row.getByRole("button", { name: "Não" }).click();
+  await expect(row.getByText("Agendado")).toBeVisible();
+  await row.getByRole("button", { name: "Excluir" }).click();
+  await row.getByRole("button", { name: "Sim, excluir" }).click();
+  await expect(page.getByRole("row").filter({ hasText: theme })).toHaveCount(0);
 });
 
 test("conta com aprovação: editor sobe, aprovadora aprova, sai do ar pela rotina", async ({ page, browser }) => {

@@ -8,7 +8,7 @@ import { Notice } from "@/components/ui/status";
 import { createClient } from "@/lib/supabase/client";
 import { hashtagCount, type Format } from "@/lib/posts/upload";
 import { discardMedia, finalizeDraft } from "../../post-actions";
-import { attachPaths, resubmit, saveCaption } from "../actions";
+import { attachPaths, generateItem, resubmit, saveCaption } from "../actions";
 
 export function CaptionEditor({ slug, postId, initial }: { slug: string; postId: string; initial: string }) {
   const [caption, setCaption] = useState(initial);
@@ -110,6 +110,61 @@ export function ResubmitButton({ slug, postId }: { slug: string; postId: string 
         {pending ? "Reenviando…" : "Reenviar"}
       </Button>
       {error ? <ErrorNote>{error}</ErrorNote> : null}
+    </div>
+  );
+}
+
+/**
+ * Pedir à IA uma nova legenda ou uma nova arte, com uma orientação opcional.
+ * `note` avisa o que acontece com o status (ex.: volta para aprovação).
+ */
+export function RegeneratePanel({ slug, postId, format, note }: { slug: string; postId: string; format: Format; note?: string }) {
+  const router = useRouter();
+  const [hint, setHint] = useState("");
+  const [running, setRunning] = useState<"caption" | "image" | null>(null);
+  const [pending, start] = useTransition();
+  const [msg, setMsg] = useState<{ ok: boolean; text: string } | null>(null);
+  const run = (only: "caption" | "image") => {
+    setMsg(null);
+    setRunning(only);
+    start(async () => {
+      const r = await generateItem(slug, postId, { only, hint: hint.trim() || undefined });
+      setRunning(null);
+      if (!r.ok) return setMsg({ ok: false, text: r.error });
+      setMsg({ ok: true, text: only === "caption" ? "Nova legenda pronta." : "Nova arte pronta." });
+      setHint("");
+      router.refresh();
+    });
+  };
+  return (
+    <div className="flex flex-col gap-2 rounded-lg border border-border p-4">
+      <h2 className="text-[14px] font-semibold">Não gostou? Peça de novo à IA</h2>
+      <label htmlFor="regen-hint" className="text-[13px] font-medium text-text-2">
+        O que mudar (opcional)
+      </label>
+      <textarea
+        id="regen-hint"
+        value={hint}
+        onChange={(e) => setHint(e.target.value)}
+        maxLength={500}
+        rows={2}
+        placeholder="Ex.: tom mais leve, legenda mais curta, fundo claro com pessoas sorrindo"
+        className="rounded-md border border-border-strong px-3 py-2 text-[14px]"
+      />
+      {note ? <p className="text-[13px] text-muted-fg">{note}</p> : null}
+      {msg ? msg.ok ? <Notice tone="success">{msg.text}</Notice> : <ErrorNote>{msg.text}</ErrorNote> : null}
+      <div className="flex flex-wrap gap-2">
+        {format !== "story" ? (
+          <Button type="button" variant="secondary" disabled={pending} onClick={() => run("caption")}>
+            {running === "caption" ? "Gerando legenda…" : "Nova legenda"}
+          </Button>
+        ) : null}
+        {format !== "reels" ? (
+          <Button type="button" variant="secondary" disabled={pending} onClick={() => run("image")}>
+            {running === "image" ? (format === "carousel" ? "Gerando slides…" : "Gerando arte…") : format === "carousel" ? "Novos slides" : "Nova arte"}
+          </Button>
+        ) : null}
+      </div>
     </div>
   );
 }

@@ -1,16 +1,18 @@
-import Link from "next/link";
 import { notFound } from "next/navigation";
 import { PageHeader } from "@/components/shell/app-shell";
+import { DELETABLE_STATUSES } from "@/lib/posts/transitions";
+import { DeletePostButton } from "../../delete-post-button";
 import { StatusDot } from "@/components/ui/status";
 import { can } from "@/lib/auth/permissions";
 import { FORMAT_LABELS } from "@/lib/posts/upload";
 import { resolveTenant } from "@/lib/tenant";
 import { RowActions } from "../plan-forms";
-import { AttachMedia, CaptionEditor, ResubmitButton } from "./item-forms";
+import { AttachMedia, CaptionEditor, RegeneratePanel, ResubmitButton } from "./item-forms";
 
 export const maxDuration = 300;
 
 const EDITABLE = new Set(["planned", "rejected", "generation_failed", "pending_approval", "scheduled"]);
+const REGENERABLE = new Set(["planned", "rejected", "generation_failed", "pending_approval", "scheduled"]);
 
 export default async function PlanItemPage({ params }: PageProps<"/[tenant]/planejamento/[id]">) {
   const { tenant: slug, id } = await params;
@@ -31,16 +33,27 @@ export default async function PlanItemPage({ params }: PageProps<"/[tenant]/plan
   const when = new Intl.DateTimeFormat("pt-BR", { timeZone: tenant.timezone, weekday: "long", day: "2-digit", month: "long", hour: "2-digit", minute: "2-digit" });
   const month = new Intl.DateTimeFormat("en-CA", { timeZone: tenant.timezone, year: "numeric", month: "2-digit" }).format(new Date(post.scheduled_at));
   const generatable = post.origin === "ai" && ["planned", "rejected", "generation_failed"].includes(post.status);
+  // Já tem algo gerado: dá para pedir só uma nova legenda ou só uma nova arte
+  const regenerable = post.origin === "ai" && (post.caption || media.length > 0) && REGENERABLE.has(post.status);
+  const regenNote =
+    post.status === "scheduled" || post.status === "pending_approval"
+      ? "Depois de gerar, o post passa de novo pelas regras da conta: vai para aprovação se ela pedir, ou volta para a agenda."
+      : undefined;
 
   return (
     <>
-      <PageHeader title={post.theme} sub={`@${post.ig_accounts?.username} · ${FORMAT_LABELS[post.format]} · ${when.format(new Date(post.scheduled_at))}`} />
+      <PageHeader back={{ href: `/${tenant.slug}/planejamento?mes=${month}`, label: "Voltar ao planejamento" }} title={post.theme} sub={`@${post.ig_accounts?.username} · ${FORMAT_LABELS[post.format]} · ${when.format(new Date(post.scheduled_at))}`} />
       <div className="flex max-w-[1040px] flex-col gap-5">
         <div className="flex flex-wrap items-center gap-4">
-          <Link href={`/${tenant.slug}/planejamento?mes=${month}`} className="text-[14px] text-brand-dark underline">
-            Voltar ao planejamento
-          </Link>
           <StatusDot status={post.status} />
+          {canEdit && (DELETABLE_STATUSES as readonly string[]).includes(post.status) ? (
+            <DeletePostButton
+              slug={tenant.slug}
+              postId={post.id}
+              warn={post.status === "scheduled" ? "Este post já está agendado e deixa de ser publicado." : undefined}
+              after={`/${tenant.slug}/planejamento?mes=${month}`}
+            />
+          ) : null}
           {post.is_ai_generated ? <span className="text-[13px] text-text-2">Arte gerada com IA (o Instagram mostra o selo)</span> : null}
         </div>
         {post.status === "generation_failed" && post.last_error ? <p className="rounded-md bg-danger-bg px-3 py-2.5 text-[13px] text-danger">{post.last_error}</p> : null}
@@ -85,9 +98,10 @@ export default async function PlanItemPage({ params }: PageProps<"/[tenant]/plan
                 <ResubmitButton slug={tenant.slug} postId={post.id} />
               </div>
             ) : null}
+            {canEdit && regenerable ? <RegeneratePanel slug={tenant.slug} postId={post.id} format={post.format} note={regenNote} /> : null}
             {canEdit && generatable ? (
               <div className="self-start">
-                <RowActions slug={tenant.slug} postId={post.id} canGenerate regenerate={!!post.caption} />
+                <RowActions slug={tenant.slug} postId={post.id} canGenerate regenerate={!!post.caption} canDelete={false} />
               </div>
             ) : null}
           </div>

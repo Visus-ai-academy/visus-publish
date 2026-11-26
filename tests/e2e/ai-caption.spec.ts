@@ -28,7 +28,7 @@ test("admin guarda a chave de IA e o editor gera tema e legenda a partir da imag
   const editor = await (await browser.newContext()).newPage();
   await login(editor, "edu@aurora.local");
   await editor.goto("/clinica-aurora/criativos");
-  await expect(editor.getByRole("heading", { name: "Criativos prontos" })).toBeVisible();
+  await expect(editor.getByRole("heading", { name: "Enviar criativos" })).toBeVisible();
   const gen = editor.getByRole("button", { name: "Gerar tema e legenda com IA" });
   await expect(gen).toBeDisabled();
   await editor.getByLabel("Formato").selectOption("reels");

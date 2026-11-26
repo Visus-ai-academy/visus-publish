@@ -61,7 +61,7 @@ test("post da conta do Metricool é enviado e depois confirmado", async ({ page 
   const theme = `Metricool ${Date.now()}`;
   await loginOk(page, "edu@aurora.local");
   await page.goto("/clinica-aurora/criativos");
-  await expect(page.getByRole("heading", { name: "Criativos prontos" })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Enviar criativos" })).toBeVisible();
   await page.getByLabel("Selecione fotos, vídeos ou artes prontas").setInputFiles({ name: "arte.png", mimeType: "image/png", buffer: PNG });
   const option = page.getByLabel("Conta").locator("option").filter({ hasText: /aurora\.mc/ });
   await page.getByLabel("Conta").selectOption({ label: (await option.textContent())! });
@@ -123,7 +123,7 @@ test("conector do Metricool (plano Free): login, marca e post confirmado", async
   const bia = await browser.newPage();
   await loginOk(bia, "bia@belapele.local");
   await bia.goto("/bela-pele/criativos");
-  await expect(bia.getByRole("heading", { name: "Criativos prontos" })).toBeVisible();
+  await expect(bia.getByRole("heading", { name: "Enviar criativos" })).toBeVisible();
   await bia.getByLabel("Selecione fotos, vídeos ou artes prontas").setInputFiles({ name: "arte.png", mimeType: "image/png", buffer: PNG });
   const option = bia.getByLabel("Conta").locator("option").filter({ hasText: /belapele\.mc/ });
   await bia.getByLabel("Conta").selectOption({ label: (await option.textContent())! });

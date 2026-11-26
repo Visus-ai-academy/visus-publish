@@ -169,13 +169,26 @@ export async function proposeCadence(slug: string, raw: unknown): Promise<Result
 }
 
 /** Gera legenda e arte de um item do plano (uma chamada por post, para caber no tempo da função). */
-export async function generateItem(slug: string, postId: string): Promise<Result<{ status: string }>> {
+const regenerateInput = z
+  .object({
+    only: z.enum(["caption", "image"]).optional(),
+    hint: z.string().trim().max(500, "A orientação passa de 500 caracteres.").optional(),
+  })
+  .optional();
+
+const NOTE = { caption: "nova legenda com IA", image: "nova arte com IA" } as const;
+
+/** Gera legenda e arte; com `only`, refaz só uma das partes, seguindo a orientação opcional. */
+export async function generateItem(slug: string, postId: string, raw?: unknown): Promise<Result<{ status: string }>> {
   try {
     const { tenant, supabase } = await editor(slug);
     const id = uuid.parse(postId);
-    const { error } = await supabase.rpc("begin_generation", { p_post: id });
+    const parsed = regenerateInput.safeParse(raw);
+    if (!parsed.success) return { ok: false, error: parsed.error.issues[0].message };
+    const { only, hint } = parsed.data ?? {};
+    const { error } = await supabase.rpc("begin_generation", { p_post: id, p_note: only ? NOTE[only] : undefined });
     if (error) return { ok: false, error: error.code === "55P03" ? "Este post já está sendo gerado." : "Este post não pode ser gerado agora." };
-    const r = await generatePost(createAdminClient(), tenant.id, id, { providers: providersFromEnv() });
+    const r = await generatePost(createAdminClient(), tenant.id, id, { providers: providersFromEnv(), only, hint: hint || undefined });
     refresh(slug);
     revalidatePath(`/${slug}/planejamento/${id}`);
     return r.error ? { ok: false, error: r.error } : { ok: true, status: r.status };

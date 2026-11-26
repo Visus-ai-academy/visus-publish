@@ -23,7 +23,7 @@ function tomorrow() {
 
 async function upload(page: Page, account: RegExp, theme: string) {
   await page.goto("/clinica-aurora/criativos");
-  await expect(page.getByRole("heading", { name: "Criativos prontos" })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Enviar criativos" })).toBeVisible();
   await page.getByLabel("Selecione fotos, vídeos ou artes prontas").setInputFiles({ name: "arte.png", mimeType: "image/png", buffer: PNG });
   await page.getByLabel("Conta").selectOption({ label: (await page.getByLabel("Conta").locator("option").filter({ hasText: account }).textContent())! });
   await page.getByLabel("Data").fill(tomorrow().date);

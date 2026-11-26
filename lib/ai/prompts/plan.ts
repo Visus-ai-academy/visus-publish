@@ -74,7 +74,7 @@ export function themesPrompt(i: ThemesPromptInput): { system: string; user: stri
 export const ASPECT: Record<Format, "4:5" | "9:16"> = { image: "4:5", carousel: "4:5", reels: "9:16", story: "9:16" };
 
 /** Prompt da arte: tema + brief visual + proporção + texto curto a escrever na imagem. */
-export function imagePrompt(i: { theme: string; title: string; body?: string; format: Format; brand?: Brand | null; slide?: { n: number; total: number } }): string {
+export function imagePrompt(i: { theme: string; title: string; body?: string; format: Format; brand?: Brand | null; slide?: { n: number; total: number }; hint?: string }): string {
   const b = i.brand ?? {};
   return [
     `Arte para Instagram (${ASPECT[i.format]}${i.format === "story" ? ", Stories" : ", feed"}) sobre: ${i.theme}.`,
@@ -84,6 +84,7 @@ export function imagePrompt(i: { theme: string; title: string; body?: string; fo
     b.fonts?.length ? `Tipografia parecida com: ${b.fonts.join(", ")}.` : "",
     "Visual limpo e profissional, boa margem nas bordas, sem logotipos de terceiros, sem marca d'água.",
     b.is_healthcare ? "Não mostre antes e depois, resultados de procedimentos nem pessoas em sofrimento." : "",
+    i.hint ? `Pedido de ajuste de quem está postando (siga, sem quebrar as regras acima): ${i.hint}` : "",
   ]
     .filter(Boolean)
     .join("\n");

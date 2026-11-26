@@ -9,7 +9,7 @@ import type { MetricoolBrand } from "@/lib/metricool/client";
 import { listBrandsWith, metricoolEnv } from "@/lib/metricool/port";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { isPlatformAdmin, resolveTenant } from "@/lib/tenant";
-import { disconnect, setApprovalMode } from "./actions";
+import { disconnect, setApprovalMode, setPublishVia } from "./actions";
 import { removeMetricool } from "./metricool-actions";
 import { LinkBrandForm, MetricoolCredentialsForm } from "./metricool-forms";
 
@@ -41,7 +41,7 @@ export default async function AccountsPage({ params, searchParams }: PageProps<"
   const [{ data: accounts, error }, { data: mcConn }, platformAdmin] = await Promise.all([
     supabase
       .from("ig_accounts")
-      .select("id, username, name, status, require_approval, token_expires_at, publish_via")
+      .select("id, username, name, status, require_approval, token_expires_at, publish_via, metricool_blog_id, ig_user_id")
       .eq("tenant_id", tenant.id)
       .order("username"),
     supabase.from("metricool_connections").select("auth_mode, metricool_user_id, updated_at").eq("tenant_id", tenant.id).maybeSingle(),
@@ -172,13 +172,36 @@ export default async function AccountsPage({ params, searchParams }: PageProps<"
                         <span aria-hidden className="size-2 rounded-full" style={{ background: st.color }} />
                         {st.label}
                       </span>
-                      {a.status === "connected" && a.publish_via === "meta" && a.token_expires_at ? (
+                      {a.status === "connected" && a.token_expires_at ? (
                         <p className="text-[13px] text-text-2">
                           Acesso renova sozinho, válido até <span className="tabular-nums">{dateFmt.format(new Date(a.token_expires_at))}</span>
                         </p>
                       ) : null}
                     </td>
-                    <td className="py-3 pr-4">{a.publish_via === "metricool" ? "Metricool" : "Meta"}</td>
+                    <td className="py-3 pr-4">
+                      {isAdmin && a.metricool_blog_id && a.token_expires_at && !a.ig_user_id.startsWith("metricool:") ? (
+                        // Conta ligada nos dois: o admin escolhe por onde publica
+                        <div role="group" aria-label={`Por onde @${a.username} publica`} className="inline-flex rounded-md border border-border-strong p-0.5">
+                          {(["metricool", "meta"] as const).map((v) => (
+                            <form key={v} action={setPublishVia.bind(null, tenant.slug, a.id, v)}>
+                              <button
+                                aria-pressed={a.publish_via === v}
+                                className={`h-9 rounded-sm px-3 text-[13px] font-semibold transition-colors duration-150 ${a.publish_via === v ? "bg-primary text-on-primary" : "text-text-2 hover:bg-muted"}`}
+                              >
+                                {v === "meta" ? "Meta" : "Metricool"}
+                              </button>
+                            </form>
+                          ))}
+                        </div>
+                      ) : a.publish_via === "metricool" ? (
+                        "Metricool"
+                      ) : (
+                        "Meta"
+                      )}
+                      {a.publish_via === "metricool" && a.token_expires_at && !a.ig_user_id.startsWith("metricool:") ? (
+                        <p className="text-[13px] text-text-2">Métricas pela Meta</p>
+                      ) : null}
+                    </td>
                     <td className="py-3 pr-4">
                       {isAdmin ? (
                         <div role="group" aria-label={`Modo de @${a.username}`} className="inline-flex rounded-md border border-border-strong p-0.5">
@@ -208,6 +231,12 @@ export default async function AccountsPage({ params, searchParams }: PageProps<"
                           {a.status !== "connected" && metaReady ? (
                             <a href={connectHref} className="inline-flex h-10 items-center rounded-md px-2.5 font-semibold hover:bg-muted">
                               Reconectar
+                            </a>
+                          ) : null}
+                          {a.status === "connected" && a.publish_via === "metricool" && !a.token_expires_at && metaReady ? (
+                            // Liga o acesso da Meta só para ler as métricas; a publicação segue pelo Metricool
+                            <a href={connectHref} className="inline-flex h-10 items-center rounded-md px-2.5 font-semibold hover:bg-muted">
+                              Ligar métricas pela Meta
                             </a>
                           ) : null}
                           {a.status !== "disconnected" ? (

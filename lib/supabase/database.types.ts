@@ -196,13 +196,16 @@ export type Database = {
           action: Json | null;
           applied_at: string | null;
           applied_by: string | null;
+          applied_count: number | null;
           body: string;
           created_at: string;
           evidence: Json | null;
           id: string;
           ig_account_id: string | null;
+          model: string | null;
           period_end: string;
           period_start: string;
+          position: number;
           tenant_id: string;
           title: string;
         };
@@ -211,13 +214,16 @@ export type Database = {
           action?: Json | null;
           applied_at?: string | null;
           applied_by?: string | null;
+          applied_count?: number | null;
           body: string;
           created_at?: string;
           evidence?: Json | null;
           id?: string;
           ig_account_id?: string | null;
+          model?: string | null;
           period_end: string;
           period_start: string;
+          position?: number;
           tenant_id: string;
           title: string;
         };
@@ -225,13 +231,16 @@ export type Database = {
           action?: Json | null;
           applied_at?: string | null;
           applied_by?: string | null;
+          applied_count?: number | null;
           body?: string;
           created_at?: string;
           evidence?: Json | null;
           id?: string;
           ig_account_id?: string | null;
+          model?: string | null;
           period_end?: string;
           period_start?: string;
+          position?: number;
           tenant_id?: string;
           title?: string;
         };
@@ -513,6 +522,8 @@ export type Database = {
           created_at: string;
           id: string;
           ig_user_id: string;
+          insights_checked_at: string | null;
+          insights_error: string | null;
           metricool_blog_id: string | null;
           name: string | null;
           profile_picture_url: string | null;
@@ -532,6 +543,8 @@ export type Database = {
           created_at?: string;
           id?: string;
           ig_user_id: string;
+          insights_checked_at?: string | null;
+          insights_error?: string | null;
           metricool_blog_id?: string | null;
           name?: string | null;
           profile_picture_url?: string | null;
@@ -550,6 +563,8 @@ export type Database = {
           created_at?: string;
           id?: string;
           ig_user_id?: string;
+          insights_checked_at?: string | null;
+          insights_error?: string | null;
           metricool_blog_id?: string | null;
           name?: string | null;
           profile_picture_url?: string | null;
@@ -564,6 +579,104 @@ export type Database = {
         Relationships: [
           {
             foreignKeyName: "ig_accounts_tenant_id_fkey";
+            columns: ["tenant_id"];
+            isOneToOne: false;
+            referencedRelation: "tenants";
+            referencedColumns: ["id"];
+          },
+        ];
+      };
+      ig_media: {
+        Row: {
+          caption: string | null;
+          comments: number | null;
+          created_at: string;
+          follows: number | null;
+          id: string;
+          ig_account_id: string;
+          ig_media_id: string;
+          insights_at: string | null;
+          insights_error: string | null;
+          likes: number | null;
+          media_product_type: string | null;
+          media_type: string | null;
+          permalink: string | null;
+          post_id: string | null;
+          posted_at: string;
+          profile_visits: number | null;
+          reach: number | null;
+          saved: number | null;
+          shares: number | null;
+          tenant_id: string;
+          total_interactions: number | null;
+          views: number | null;
+        };
+        ComputedFields: never;
+        Insert: {
+          caption?: string | null;
+          comments?: number | null;
+          created_at?: string;
+          follows?: number | null;
+          id?: string;
+          ig_account_id: string;
+          ig_media_id: string;
+          insights_at?: string | null;
+          insights_error?: string | null;
+          likes?: number | null;
+          media_product_type?: string | null;
+          media_type?: string | null;
+          permalink?: string | null;
+          post_id?: string | null;
+          posted_at: string;
+          profile_visits?: number | null;
+          reach?: number | null;
+          saved?: number | null;
+          shares?: number | null;
+          tenant_id: string;
+          total_interactions?: number | null;
+          views?: number | null;
+        };
+        Update: {
+          caption?: string | null;
+          comments?: number | null;
+          created_at?: string;
+          follows?: number | null;
+          id?: string;
+          ig_account_id?: string;
+          ig_media_id?: string;
+          insights_at?: string | null;
+          insights_error?: string | null;
+          likes?: number | null;
+          media_product_type?: string | null;
+          media_type?: string | null;
+          permalink?: string | null;
+          post_id?: string | null;
+          posted_at?: string;
+          profile_visits?: number | null;
+          reach?: number | null;
+          saved?: number | null;
+          shares?: number | null;
+          tenant_id?: string;
+          total_interactions?: number | null;
+          views?: number | null;
+        };
+        Relationships: [
+          {
+            foreignKeyName: "ig_media_ig_account_id_tenant_id_fkey";
+            columns: ["ig_account_id", "tenant_id"];
+            isOneToOne: false;
+            referencedRelation: "ig_accounts";
+            referencedColumns: ["id", "tenant_id"];
+          },
+          {
+            foreignKeyName: "ig_media_post_id_tenant_id_fkey";
+            columns: ["post_id", "tenant_id"];
+            isOneToOne: false;
+            referencedRelation: "posts";
+            referencedColumns: ["id", "tenant_id"];
+          },
+          {
+            foreignKeyName: "ig_media_tenant_id_fkey";
             columns: ["tenant_id"];
             isOneToOne: false;
             referencedRelation: "tenants";
@@ -1087,6 +1200,7 @@ export type Database = {
           provider: string;
         }[];
       };
+      apply_finding: { Args: { p_finding: string }; Returns: number };
       begin_generation: { Args: { p_note?: string; p_post: string }; Returns: undefined };
       charge_credits: { Args: { p_amount: number; p_reason: string; p_tenant: string }; Returns: number };
       claim_awaiting_confirmation: {
@@ -1209,6 +1323,7 @@ export type Database = {
       set_external_post: { Args: { p_external_id: string; p_post: string; p_provider: Database["public"]["Enums"]["publish_provider"] }; Returns: undefined };
       set_ig_container: { Args: { p_container: string; p_post: string }; Returns: undefined };
       set_metricool_tools: { Args: { p_tenant: string; p_tools: Json }; Returns: undefined };
+      set_publish_via: { Args: { p_account: string; p_via: Database["public"]["Enums"]["publish_provider"] }; Returns: undefined };
       storage_tenant: { Args: { p_name: string }; Returns: string };
       store_ig_token: { Args: { p_account: string; p_expires_at: string; p_token: string }; Returns: undefined };
       store_metricool_oauth: {
@@ -1249,16 +1364,7 @@ export type Database = {
       post_format: "image" | "carousel" | "reels" | "story";
       post_origin: "ai" | "upload";
       post_status:
-        | "planned"
-        | "generating"
-        | "generation_failed"
-        | "pending_approval"
-        | "rejected"
-        | "scheduled"
-        | "publishing"
-        | "published"
-        | "failed"
-        | "paused";
+        "planned" | "generating" | "generation_failed" | "pending_approval" | "rejected" | "scheduled" | "publishing" | "published" | "failed" | "paused";
       publish_provider: "meta" | "metricool";
       tenant_status: "active" | "suspended";
     };
@@ -1274,12 +1380,12 @@ type DefaultSchema = DatabaseWithoutInternals[Extract<keyof Database, "public">]
 
 export type Tables<
   DefaultSchemaTableNameOrOptions extends keyof (DefaultSchema["Tables"] & DefaultSchema["Views"]) | { schema: keyof DatabaseWithoutInternals },
-  TableName extends DefaultSchemaTableNameOrOptions extends {
+  TableName extends (DefaultSchemaTableNameOrOptions extends {
     schema: keyof DatabaseWithoutInternals;
   }
     ? keyof (DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"] &
         DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Views"])
-    : never = never,
+    : never) = never,
 > = DefaultSchemaTableNameOrOptions extends { schema: keyof DatabaseWithoutInternals }
   ? (DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"] &
       DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Views"])[TableName] extends {
@@ -1297,11 +1403,11 @@ export type Tables<
 
 export type TablesInsert<
   DefaultSchemaTableNameOrOptions extends keyof DefaultSchema["Tables"] | { schema: keyof DatabaseWithoutInternals },
-  TableName extends DefaultSchemaTableNameOrOptions extends {
+  TableName extends (DefaultSchemaTableNameOrOptions extends {
     schema: keyof DatabaseWithoutInternals;
   }
     ? keyof DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"]
-    : never = never,
+    : never) = never,
 > = DefaultSchemaTableNameOrOptions extends { schema: keyof DatabaseWithoutInternals }
   ? DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"][TableName] extends {
       Insert: infer I;
@@ -1318,11 +1424,11 @@ export type TablesInsert<
 
 export type TablesUpdate<
   DefaultSchemaTableNameOrOptions extends keyof DefaultSchema["Tables"] | { schema: keyof DatabaseWithoutInternals },
-  TableName extends DefaultSchemaTableNameOrOptions extends {
+  TableName extends (DefaultSchemaTableNameOrOptions extends {
     schema: keyof DatabaseWithoutInternals;
   }
     ? keyof DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"]
-    : never = never,
+    : never) = never,
 > = DefaultSchemaTableNameOrOptions extends { schema: keyof DatabaseWithoutInternals }
   ? DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"][TableName] extends {
       Update: infer U;
@@ -1339,11 +1445,11 @@ export type TablesUpdate<
 
 export type Enums<
   DefaultSchemaEnumNameOrOptions extends keyof DefaultSchema["Enums"] | { schema: keyof DatabaseWithoutInternals },
-  EnumName extends DefaultSchemaEnumNameOrOptions extends {
+  EnumName extends (DefaultSchemaEnumNameOrOptions extends {
     schema: keyof DatabaseWithoutInternals;
   }
     ? keyof DatabaseWithoutInternals[DefaultSchemaEnumNameOrOptions["schema"]]["Enums"]
-    : never = never,
+    : never) = never,
 > = DefaultSchemaEnumNameOrOptions extends { schema: keyof DatabaseWithoutInternals }
   ? DatabaseWithoutInternals[DefaultSchemaEnumNameOrOptions["schema"]]["Enums"][EnumName]
   : DefaultSchemaEnumNameOrOptions extends keyof DefaultSchema["Enums"]
@@ -1352,11 +1458,11 @@ export type Enums<
 
 export type CompositeTypes<
   PublicCompositeTypeNameOrOptions extends keyof DefaultSchema["CompositeTypes"] | { schema: keyof DatabaseWithoutInternals },
-  CompositeTypeName extends PublicCompositeTypeNameOrOptions extends {
+  CompositeTypeName extends (PublicCompositeTypeNameOrOptions extends {
     schema: keyof DatabaseWithoutInternals;
   }
     ? keyof DatabaseWithoutInternals[PublicCompositeTypeNameOrOptions["schema"]]["CompositeTypes"]
-    : never = never,
+    : never) = never,
 > = PublicCompositeTypeNameOrOptions extends { schema: keyof DatabaseWithoutInternals }
   ? DatabaseWithoutInternals[PublicCompositeTypeNameOrOptions["schema"]]["CompositeTypes"][CompositeTypeName]
   : PublicCompositeTypeNameOrOptions extends keyof DefaultSchema["CompositeTypes"]

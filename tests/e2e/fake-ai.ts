@@ -24,7 +24,14 @@ export function startFakeAi(): Promise<Server> {
       if (req.url === "/v1/chat/completions") {
         last = JSON.parse(raw);
         const sys = String((last as { messages: { content: string }[] }).messages[0].content);
-        const reply = sys.includes("cadência semanal")
+        const reply = sys.includes("analista de desempenho")
+          ? {
+              achados: [
+                { titulo: "Terça às 18h rende o triplo de segunda às 12h", texto: "As terças às 18h ficaram bem acima das segundas às 12h.", evidencia: {}, acao: { tipo: "mover_horario", de_hora: 12, para_hora: 18 } },
+                { titulo: "Casos com números trazem mais visitas ao perfil", texto: "Os posts com casos reais lideram as visitas.", evidencia: {}, acao: { tipo: "sugerir_temas", angulo: "casos reais com números" } },
+              ],
+            }
+          : sys.includes("cadência semanal")
           ? { vagas: [{ dia: "seg", horario: "12:00", formato: "reels" }, { dia: "seg", horario: "18:00", formato: "foto" }], motivo: "Segunda concentra o público da clínica." }
           : sys.includes("calendário editorial")
           ? { temas: [{ vaga: 1, tema: "Um dia na recepção" }, { vaga: 2, tema: "Mitos sobre clareamento" }] }

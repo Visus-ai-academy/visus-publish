@@ -270,7 +270,7 @@ describe("publicação pelo Metricool", () => {
 });
 
 describe("troca para a Meta", () => {
-  it("conectar pela Meta a mesma conta passa a publicar pela Meta, sem duplicar", async () => {
+  it("conectar pela Meta a mesma conta liga a leitura das métricas e continua publicando pelo Metricool; o admin troca depois", async () => {
     const link = await linkMetricoolAccount(service, { tenantId: tenantA, userId: admin.id, blogId: slug("blog-troca"), username: "Troca.Clinica" });
     if (!link.ok) throw new Error("falhou");
     const igId = slug("ig-real");
@@ -283,8 +283,23 @@ describe("troca para a Meta", () => {
     });
     expect(r).toEqual({ ok: true, accountId: link.accountId });
     const acc = must(await service.from("ig_accounts").select("ig_user_id, publish_via, metricool_blog_id").eq("id", link.accountId).single());
-    expect(acc).toMatchObject({ ig_user_id: igId, publish_via: "meta" });
+    expect(acc).toMatchObject({ ig_user_id: igId, publish_via: "metricool" });
     expect(acc.metricool_blog_id).toBeTruthy();
     expect(must(await service.rpc("read_ig_token", { p_account: link.accountId }))).toBe("meta-token");
+
+    // Só o admin do cliente troca o provedor, e pela função
+    const outsider = await createUser("mc-out");
+    ok(await service.from("memberships").insert({ tenant_id: tenantB, user_id: outsider.id, role: "admin" }));
+    expect((await outsider.client.rpc("set_publish_via", { p_account: link.accountId, p_via: "meta" })).error?.code).toBe("42501");
+    expect((await editor.client.rpc("set_publish_via", { p_account: link.accountId, p_via: "meta" })).error?.code).toBe("42501");
+    ok(await admin.client.rpc("set_publish_via", { p_account: link.accountId, p_via: "meta" }));
+    expect(must(await service.from("ig_accounts").select("publish_via").eq("id", link.accountId).single()).publish_via).toBe("meta");
+    ok(await admin.client.rpc("set_publish_via", { p_account: link.accountId, p_via: "metricool" }));
+  });
+
+  it("não troca para a Meta sem o acesso da Meta", async () => {
+    const link = await linkMetricoolAccount(service, { tenantId: tenantA, userId: admin.id, blogId: slug("blog-sem-meta"), username: "sem.meta" });
+    if (!link.ok) throw new Error("falhou");
+    expect((await admin.client.rpc("set_publish_via", { p_account: link.accountId, p_via: "meta" })).error?.code).toBe("VP409");
   });
 });

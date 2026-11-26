@@ -24,8 +24,8 @@ export async function connectAccount(db: Db, input: ConnectInput): Promise<Conne
   // A mesma conta do Instagram não pode estar em dois clientes (SPEC §4).
   if (existing && existing.tenant_id !== input.tenantId) return { ok: false, reason: "other_tenant" };
 
-  // Conta que já publicava pelo Metricool neste cliente: passa a publicar pela Meta,
-  // mantendo posts, histórico e o vínculo com a marca do Metricool.
+  // Conta que já publicava pelo Metricool neste cliente: ganha o acesso da Meta (para ler as
+  // métricas) e continua publicando pelo Metricool. O admin troca o provedor em Contas.
   if (!existing) {
     const { data: viaMetricool } = await db
       .from("ig_accounts")
@@ -37,7 +37,7 @@ export async function connectAccount(db: Db, input: ConnectInput): Promise<Conne
     if (viaMetricool) {
       const { error } = await db
         .from("ig_accounts")
-        .update({ ig_user_id: input.profile.user_id, publish_via: "meta" })
+        .update({ ig_user_id: input.profile.user_id })
         .eq("tenant_id", input.tenantId)
         .eq("id", viaMetricool.id);
       if (error) return { ok: false, reason: "error" };
@@ -99,7 +99,7 @@ export async function refreshExpiringTokens(
   const limit = new Date(now.getTime() + REFRESH_WINDOW_DAYS * 86_400_000).toISOString();
   const { data: accounts, error } = await db
     .from("ig_accounts")
-    .select("id, tenant_id, username")
+    .select("id, tenant_id, username, publish_via")
     .eq("status", "connected")
     .lt("token_expires_at", limit);
   if (error) throw new Error(error.message);
@@ -118,6 +118,17 @@ export async function refreshExpiringTokens(
       if (e) throw new Error(e.message);
       results.push({ accountId: acc.id, ok: true });
     } catch {
+      // Conta que publica pelo Metricool continua publicando: só a leitura das métricas para
+      if (acc.publish_via === "metricool") {
+        await db
+          .from("ig_accounts")
+          .update({ insights_error: "O acesso da Meta a esta conta venceu. Conecte a conta de novo pela Meta para voltar a ler as métricas." })
+          .eq("tenant_id", acc.tenant_id)
+          .eq("id", acc.id);
+        await db.from("audit_log").insert({ tenant_id: acc.tenant_id, action: "ig_account.meta_token_expired", target: `@${acc.username}` });
+        results.push({ accountId: acc.id, ok: false });
+        continue;
+      }
       await db.from("ig_accounts").update({ status: "needs_reauth" }).eq("tenant_id", acc.tenant_id).eq("id", acc.id);
       await db.from("audit_log").insert({ tenant_id: acc.tenant_id, action: "ig_account.needs_reauth", target: `@${acc.username}` });
       results.push({ accountId: acc.id, ok: false });

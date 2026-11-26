@@ -8,6 +8,8 @@ import { getMetaConfig } from "@/lib/meta/config";
 import { metaPort, type MetaPort } from "@/lib/meta/port";
 import { metricoolEnv, metricoolPort } from "@/lib/metricool/port";
 import { publishDue } from "@/lib/publishing/publisher";
+import { weeklyAnalysis } from "@/lib/insights/analysis";
+import { collectInsights, insightsPort } from "@/lib/insights/collect";
 import { createAdminClient } from "@/lib/supabase/admin";
 
 // Rotinas chamadas pelo agendador (pg_cron + pg_net, ou cron da hospedagem).
@@ -59,6 +61,15 @@ export async function POST(request: NextRequest, ctx: RouteContext<"/api/jobs/[j
     case "refresh-tokens": {
       if (!cfg) return NextResponse.json({ processed: 0, skipped: "Meta não configurada" });
       const results = await refreshExpiringTokens(db, (t) => refreshToken(cfg, t));
+      return NextResponse.json({ processed: results.length, failed: results.filter((r) => !r.ok).length });
+    }
+    case "collect-insights": {
+      if (!cfg) return NextResponse.json({ processed: 0, skipped: "Meta não configurada" });
+      const results = await collectInsights(db, insightsPort(cfg));
+      return NextResponse.json({ processed: results.length, failed: results.filter((r) => !r.ok).length, read: results.reduce((s, r) => s + r.read, 0) });
+    }
+    case "weekly-analysis": {
+      const results = await weeklyAnalysis(db, { providers: providersFromEnv() });
       return NextResponse.json({ processed: results.length, failed: results.filter((r) => !r.ok).length });
     }
     default:

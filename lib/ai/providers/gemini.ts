@@ -10,7 +10,7 @@ export function geminiProvider(cfg: ProviderConfig = {}): CaptionProvider {
         headers: { "x-goog-api-key": req.apiKey, "content-type": "application/json" },
         body: JSON.stringify({
           systemInstruction: { parts: [{ text: req.system }] },
-          contents: [{ role: "user", parts: [{ text: req.user }, ...req.images.map((i) => ({ inlineData: { mimeType: i.mime, data: i.base64 } }))] }],
+          contents: [{ role: "user", parts: [{ text: req.user }, ...req.images.map((i) => ({ inlineData: { mimeType: i.mime, data: i.base64 } })), ...(req.audio ? [{ inlineData: { mimeType: req.audio.mime, data: req.audio.base64 } }] : [])] }],
           generationConfig: { responseMimeType: "application/json" },
         }),
         signal: AbortSignal.timeout(60_000),

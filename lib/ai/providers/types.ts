@@ -6,6 +6,8 @@ export type CaptionRequest = {
   system: string;
   user: string;
   images: ImagePart[];
+  /** Áudio do vídeo (WAV). O Gemini ouve direto; para a OpenAI ele é transcrito antes. */
+  audio?: { mime: "audio/wav"; base64: string } | null;
 };
 
 export interface CaptionProvider {

@@ -13,13 +13,14 @@ export const metadata = { title: "IA · Visus Publish" };
 const TASKS: { task: ModelTask; label: string }[] = [
   { task: "caption", label: "Texto (tema e legenda)" },
   { task: "image", label: "Arte (imagem)" },
+  { task: "transcription", label: "Áudio do vídeo" },
 ];
 
 export default async function AdminAiPage() {
   const { supabase } = await requireUser();
   const [keys, models] = await Promise.all([
     supabase.from("ai_platform_keys").select("provider, updated_at"),
-    supabase.from("ai_models").select("id, provider, task, model").in("task", ["caption", "image"]).order("id"),
+    supabase.from("ai_models").select("id, provider, task, model").in("task", ["caption", "image", "transcription"]).order("id"),
   ]);
   // Modelos disponíveis direto na API de cada provedor com chave (a layout já exige admin da plataforma)
   const admin = createAdminClient();
@@ -47,7 +48,7 @@ export default async function AdminAiPage() {
             <ErrorNote>Não foi possível carregar a configuração de IA.</ErrorNote>
           ) : (
             <div className="overflow-x-auto">
-              <table className="w-full min-w-[760px] border-collapse text-left">
+              <table className="w-full min-w-[980px] border-collapse text-left">
                 <thead>
                   <tr className="border-b border-border text-[13px] text-muted-fg">
                     <th className="py-2 pr-4 font-medium">Provedor</th>
@@ -82,7 +83,13 @@ export default async function AdminAiPage() {
                           const m = models.data.find((r) => r.provider === p && r.task === t.task);
                           return (
                             <td key={t.task} className="py-3 pr-4">
-                              {m ? <ModelForm id={m.id} model={m.model} label={`${t.label}, ${PROVIDER_LABELS[p]}`} options={modelOptions(p, t.task, m.model, available[p])} /> : "—"}
+                              {m ? (
+                                <ModelForm id={m.id} model={m.model} label={`${t.label}, ${PROVIDER_LABELS[p]}`} options={modelOptions(p, t.task, m.model, available[p])} />
+                              ) : t.task === "transcription" && p === "gemini" ? (
+                                <span className="text-text-2">Ouve direto no modelo de texto</span>
+                              ) : (
+                                "—"
+                              )}
                             </td>
                           );
                         })}

@@ -33,3 +33,18 @@ export function openaiProvider(cfg: ProviderConfig = {}): CaptionProvider {
     },
   };
 }
+
+/** Transcreve o áudio (WAV) em português. Devolve "" se não houver fala. */
+export async function openaiTranscribe(cfg: ProviderConfig, req: { apiKey: string; model: string; base64: string }): Promise<string> {
+  const base = (cfg.baseUrl ?? "https://api.openai.com/v1").replace(/\/$/, "");
+  const f = cfg.fetch ?? fetch;
+  const form = new FormData();
+  form.append("file", new Blob([Buffer.from(req.base64, "base64")], { type: "audio/wav" }), "audio.wav");
+  form.append("model", req.model);
+  form.append("language", "pt");
+  form.append("response_format", "json");
+  const res = await f(`${base}/audio/transcriptions`, { method: "POST", headers: { authorization: `Bearer ${req.apiKey}` }, body: form, signal: AbortSignal.timeout(120_000) });
+  if (!res.ok) throw await failure("OpenAI", res);
+  const body = (await res.json()) as { text?: string };
+  return (body.text ?? "").trim();
+}

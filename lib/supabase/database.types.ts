@@ -1175,7 +1175,7 @@ export type Database = {
       transition_post: { Args: { p_note?: string; p_post: string; p_to: Database["public"]["Enums"]["post_status"] }; Returns: Database["public"]["Enums"]["post_status"] };
     };
     Enums: {
-      ai_task: "caption" | "image" | "video" | "analysis";
+      ai_task: "caption" | "image" | "video" | "analysis" | "transcription";
       billing_mode: "platform" | "own";
       ig_account_status: "connected" | "needs_reauth" | "disconnected";
       job_status: "queued" | "running" | "succeeded" | "failed";
@@ -1291,7 +1291,7 @@ export const Constants = {
   },
   public: {
     Enums: {
-      ai_task: ["caption", "image", "video", "analysis"],
+      ai_task: ["caption", "image", "video", "analysis", "transcription"],
       billing_mode: ["platform", "own"],
       ig_account_status: ["connected", "needs_reauth", "disconnected"],
       job_status: ["queued", "running", "succeeded", "failed"],

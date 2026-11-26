@@ -3,7 +3,8 @@ import { z } from "zod";
 import { FORMATS } from "@/lib/posts/upload";
 import type { Database } from "@/lib/supabase/database.types";
 import { healthFlags, mergeFlags } from "./health";
-import { captionOutputSchema, captionPrompt, composeCaption } from "./prompts/caption";
+import { captionOutputSchema, captionPrompt, composeCaption, type CaptionPromptInput } from "./prompts/caption";
+import { openaiTranscribe } from "./providers/openai";
 import { CAPTION_PROVIDERS, captionProvider, providerOf, type CaptionProviderId, type ProvidersConfig } from "./providers";
 import { AiProviderError, type ImagePart } from "./providers/types";
 
@@ -11,6 +12,8 @@ type Db = SupabaseClient<Database>;
 
 /** Limite por imagem já reduzida no navegador (base64). */
 const MAX_FRAME_CHARS = 700_000;
+/** 3 min de WAV 16 kHz mono em base64 (~7,7 MB). */
+const MAX_AUDIO_CHARS = 8_000_000;
 
 export const suggestInputSchema = z.object({
   accountId: z.string().uuid("Escolha a conta."),
@@ -26,6 +29,11 @@ export const suggestInputSchema = z.object({
     )
     .min(1, "Escolha o arquivo antes de gerar.")
     .max(6),
+  audio: z
+    .string()
+    .regex(/^data:audio\/wav;base64,[A-Za-z0-9+/=]+$/, "Áudio inválido.")
+    .max(MAX_AUDIO_CHARS, "Áudio longo demais.")
+    .nullish(),
 });
 export type SuggestInput = z.infer<typeof suggestInputSchema>;
 
@@ -79,7 +87,7 @@ export async function suggestCaption(db: Db, tenantId: string, input: SuggestInp
   const provider = await pickProvider(db, tenantId);
   if (!provider) throw new SuggestError("A geração com IA ainda não foi configurada. Um administrador precisa cadastrar a chave de IA.");
 
-  const prompt = captionPrompt({ format: input.format, mediaKind: input.mediaKind, frameCount: input.frames.length, username: account.username, hint: input.hint, brand });
+  const audioB64 = input.mediaKind === "video" && input.audio ? input.audio.split(",", 2)[1] : null;
   const { data: job, error: jobErr } = await db
     .from("generation_jobs")
     .insert({
@@ -88,7 +96,7 @@ export async function suggestCaption(db: Db, tenantId: string, input: SuggestInp
       provider: provider.id,
       model: provider.model,
       status: "running",
-      request: { source: "media", format: input.format, media_kind: input.mediaKind, frames: input.frames.length, account_id: account.id, hint: input.hint ?? null },
+      request: { source: "media", format: input.format, media_kind: input.mediaKind, frames: input.frames.length, audio: !!audioB64, account_id: account.id, hint: input.hint ?? null },
     })
     .select("id")
     .single();
@@ -98,18 +106,34 @@ export async function suggestCaption(db: Db, tenantId: string, input: SuggestInp
     db.from("generation_jobs").update({ ...patch, finished_at: new Date().toISOString() }).eq("tenant_id", tenantId).eq("id", job.id);
 
   try {
+    // Gemini ouve o áudio direto; na OpenAI ele vira texto antes (modelo de transcrição em ai_models)
+    let audio: CaptionPromptInput["audio"] = null;
+    if (audioB64 && provider.id === "gemini") audio = { heard: true };
+    else if (audioB64) {
+      const { data: m } = await db.from("ai_models").select("model").eq("provider", "openai").eq("task", "transcription").eq("active", true).limit(1).maybeSingle();
+      if (m) {
+        // Sem transcrição a legenda ainda sai pelos quadros; não derruba a geração
+        const transcript = await openaiTranscribe(opts.providers?.openai ?? {}, { apiKey: provider.key, model: m.model, base64: audioB64 }).catch((e) => {
+          console.error("transcrição", e instanceof Error ? e.message : e);
+          return "";
+        });
+        if (transcript) audio = { transcript };
+      }
+    }
+    const prompt = captionPrompt({ format: input.format, mediaKind: input.mediaKind, frameCount: input.frames.length, username: account.username, hint: input.hint, brand, audio });
     const raw = await captionProvider(provider.id, opts.providers).generateCaption({
       apiKey: provider.key,
       model: provider.model,
       system: prompt.system,
       user: prompt.user,
       images: input.frames.map(toPart),
+      audio: audio && "heard" in audio ? { mime: "audio/wav", base64: audioB64! } : null,
     });
     const parsed = captionOutputSchema.safeParse(raw);
     if (!parsed.success) throw new AiProviderError("A IA respondeu num formato inesperado. Tente de novo.");
     const { theme, caption } = composeCaption(parsed.data, input.format, brand?.default_hashtags ?? []);
     const flags = brand?.is_healthcare ? mergeFlags(healthFlags(`${theme}\n${caption}`), parsed.data.riscos) : [];
-    await finish({ status: "succeeded", result: { theme, caption, flags } });
+    await finish({ status: "succeeded", result: { theme, caption, flags, audio: audio ? ("heard" in audio ? "heard" : "transcribed") : null } });
     return { jobId: job.id, theme, caption, flags, provider: provider.id };
   } catch (e) {
     const message = e instanceof AiProviderError ? e.message : "Não foi possível gerar agora. Tente de novo.";

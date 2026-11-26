@@ -78,15 +78,17 @@ describe("lista de modelos", () => {
     expect(classifyModels("openai", ["gpt-4.1-mini", "gpt-image-1", "whisper-1", "gpt-4o-realtime-preview", "text-embedding-3-small", "o4-mini", "dall-e-3"])).toEqual({
       caption: ["gpt-4.1-mini", "o4-mini"],
       image: ["dall-e-3", "gpt-image-1"],
+      transcription: ["whisper-1"],
     });
     expect(classifyModels("gemini", ["gemini-2.5-flash", "gemini-2.5-flash-image", "gemini-embedding-001", "imagen-4"])).toEqual({
       caption: ["gemini-2.5-flash"],
       image: ["gemini-2.5-flash-image"],
+      transcription: [],
     });
   });
 
   it("usa a reserva sem resposta da API e mantém o modelo atual", () => {
     expect(modelOptions("openai", "image", "meu-modelo", null)).toEqual(["meu-modelo", "gpt-image-1", "gpt-image-1-mini"]);
-    expect(modelOptions("gemini", "caption", "gemini-2.5-flash", { caption: ["gemini-2.5-flash", "gemini-3-pro"], image: [] })).toEqual(["gemini-2.5-flash", "gemini-3-pro"]);
+    expect(modelOptions("gemini", "caption", "gemini-2.5-flash", { caption: ["gemini-2.5-flash", "gemini-3-pro"], image: [], transcription: [] })).toEqual(["gemini-2.5-flash", "gemini-3-pro"]);
   });
 });

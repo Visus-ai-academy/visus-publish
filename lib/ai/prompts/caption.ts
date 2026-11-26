@@ -34,6 +34,8 @@ export type CaptionPromptInput = {
   frameCount: number;
   username: string;
   hint?: string;
+  /** Áudio: "ouvido" (vai junto, Gemini) ou a transcrição (OpenAI). */
+  audio?: { heard: true } | { transcript: string } | null;
   /** Sem mídia: a legenda sai do tema do planejamento. */
   theme?: string;
   brand?: Brand | null;
@@ -58,6 +60,7 @@ export function captionPrompt(input: CaptionPromptInput): { system: string; user
       ? "Olhe a mídia enviada e escreva o tema e a legenda de um post do Instagram sobre o que ela mostra."
       : "Escreva a legenda de um post do Instagram sobre o tema dado.",
     "Não invente fatos específicos (nomes, preços, datas, lugares, números).",
+    input.audio ? "Se houver fala no áudio, use o que é dito como base principal do tema e da legenda, sem copiar trechos longos." : "",
     carousel
       ? 'Responda só com JSON no formato {"tema": string, "legenda": string, "hashtags": string[], "riscos": string[], "slides": [{"titulo": string, "texto": string}]}.'
       : 'Responda só com JSON no formato {"tema": string, "legenda": string, "hashtags": string[], "riscos": string[]}.',
@@ -82,6 +85,8 @@ export function captionPrompt(input: CaptionPromptInput): { system: string; user
         : input.frameCount > 1
           ? `Seguem ${input.frameCount} imagens do carrossel em ordem.`
           : "Segue a imagem do post.",
+    input.audio && "heard" in input.audio ? "Segue também o áudio do vídeo." : "",
+    input.audio && "transcript" in input.audio ? `Transcrição do áudio do vídeo: """${input.audio.transcript.slice(0, 6000)}"""` : "",
     b.tone ? `Tom de voz: ${b.tone}` : "",
     b.audience ? `Público: ${b.audience}` : "",
     b.forbidden_topics ? `Não fale de: ${b.forbidden_topics}` : "",

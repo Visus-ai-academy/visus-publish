@@ -1,11 +1,15 @@
 import type { CaptionProviderId, ProvidersConfig } from "./providers";
 
-export type ModelTask = "caption" | "image";
+export type ModelTask = "caption" | "image" | "transcription";
 
 /** Lista de reserva quando a API do provedor não responde (ou não há chave). */
 export const FALLBACK_MODELS: Record<CaptionProviderId, Record<ModelTask, string[]>> = {
-  openai: { caption: ["gpt-4.1-mini", "gpt-4.1", "gpt-4o-mini", "gpt-4o"], image: ["gpt-image-1", "gpt-image-1-mini"] },
-  gemini: { caption: ["gemini-2.5-flash", "gemini-2.5-pro", "gemini-2.5-flash-lite"], image: ["gemini-2.5-flash-image"] },
+  openai: {
+    caption: ["gpt-4.1-mini", "gpt-4.1", "gpt-4o-mini", "gpt-4o"],
+    image: ["gpt-image-1", "gpt-image-1-mini"],
+    transcription: ["gpt-4o-mini-transcribe", "gpt-4o-transcribe", "whisper-1"],
+  },
+  gemini: { caption: ["gemini-2.5-flash", "gemini-2.5-pro", "gemini-2.5-flash-lite"], image: ["gemini-2.5-flash-image"], transcription: [] },
 };
 
 const NOT_TEXT = /(audio|realtime|tts|transcribe|whisper|embedding|moderation|image|dall-e|search|computer-use|codex|aqa|veo|imagen|live|native-audio)/i;
@@ -17,11 +21,13 @@ export function classifyModels(provider: CaptionProviderId, ids: string[]): Reco
     return {
       caption: uniq.filter((id) => /^(gpt-|o\d|chatgpt-)/.test(id) && !NOT_TEXT.test(id)),
       image: uniq.filter((id) => /^(gpt-image|dall-e)/.test(id)),
+      transcription: uniq.filter((id) => /transcribe|whisper/.test(id) && !/diarize/.test(id)),
     };
   }
   return {
     caption: uniq.filter((id) => id.startsWith("gemini-") && !NOT_TEXT.test(id)),
     image: uniq.filter((id) => id.startsWith("gemini-") && /image/.test(id)),
+    transcription: [],
   };
 }
 

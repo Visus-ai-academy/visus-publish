@@ -2,9 +2,12 @@
 
 import { revalidatePath } from "next/cache";
 import { z } from "zod";
+import { complianceFor, SuggestError, suggestCaption, suggestInputSchema, type Suggestion } from "@/lib/ai/caption";
+import { providersFromEnv } from "@/lib/ai/providers";
 import { can } from "@/lib/auth/permissions";
 import { reviewPost, transitionPost } from "@/lib/posts/transitions";
 import { draftSchema, kindOf, storagePath, validateFiles } from "@/lib/posts/upload";
+import { createAdminClient } from "@/lib/supabase/admin";
 import { resolveTenant } from "@/lib/tenant";
 import { zonedToUtc } from "@/lib/time";
 
@@ -14,6 +17,22 @@ const uuid = z.string().uuid();
 
 function refresh(slug: string) {
   for (const p of ["calendario", "criativos", "aprovacoes"]) revalidatePath(`/${slug}/${p}`);
+}
+
+/** Tema e legenda sugeridos pela IA a partir da imagem ou dos quadros do vídeo. */
+export async function suggestFromMedia(slug: string, raw: unknown): Promise<Result<Omit<Suggestion, "provider">>> {
+  const { tenant, role } = await resolveTenant(slug);
+  if (!can(role, "edit_content")) return { ok: false, error: "Seu papel não permite criar posts." };
+  const parsed = suggestInputSchema.safeParse(raw);
+  if (!parsed.success) return { ok: false, error: parsed.error.issues[0].message };
+  try {
+    const s = await suggestCaption(createAdminClient(), tenant.id, parsed.data, { providers: providersFromEnv() });
+    return { ok: true, jobId: s.jobId, theme: s.theme, caption: s.caption, flags: s.flags };
+  } catch (e) {
+    if (e instanceof SuggestError) return { ok: false, error: e.message };
+    console.error("suggestFromMedia", e instanceof Error ? e.message : e);
+    return { ok: false, error: "Não foi possível gerar agora. Tente de novo." };
+  }
 }
 
 export async function createDraft(slug: string, raw: unknown): Promise<Result<{ postId: string; paths: string[] }>> {
@@ -38,6 +57,8 @@ export async function createDraft(slug: string, raw: unknown): Promise<Result<{ 
   if (!account) return { ok: false, error: "Conta não encontrada." };
   if (account.status !== "connected") return { ok: false, error: "Esta conta precisa ser reconectada antes de agendar." };
 
+  const { flags, job } = await complianceFor(supabase, tenant.id, account.id, `${input.theme}\n${input.caption}`, input.aiJobId);
+
   const { data: post, error } = await supabase
     .from("posts")
     .insert({
@@ -48,10 +69,21 @@ export async function createDraft(slug: string, raw: unknown): Promise<Result<{ 
       format: input.format,
       origin: "upload",
       caption: input.caption || null,
+      caption_provider: job?.provider ?? null,
     })
     .select("id")
     .single();
   if (error || !post) return { ok: false, error: "Não foi possível criar o post." };
+  if (flags.length) {
+    const { error: flagErr } = await supabase.rpc("add_post_flags", { p_post: post.id, p_flags: flags });
+    if (flagErr) {
+      await supabase.from("posts").delete().eq("tenant_id", tenant.id).eq("id", post.id);
+      return { ok: false, error: "Não foi possível criar o post." };
+    }
+  }
+  if (job && input.aiJobId) {
+    await createAdminClient().from("generation_jobs").update({ post_id: post.id }).eq("tenant_id", tenant.id).eq("id", input.aiJobId).is("post_id", null);
+  }
 
   return { ok: true, postId: post.id, paths: input.files.map((f, i) => storagePath(tenant.id, post.id, i, f.name)) };
 }

@@ -12,7 +12,7 @@ export const SCREENS: Record<NavKey, { label: string; title: string; sub: (tenan
 };
 
 export const NAV_GROUPS: Array<[string, NavKey[]]> = [
-  ["Conteúdo", ["calendario", "planejamento", "aprovacoes", "criativos"]],
+  ["Conteúdo", ["planejamento", "criativos", "aprovacoes", "calendario"]],
   ["Análise", ["insights"]],
   ["Configurações", ["contas", "ia", "equipe"]],
 ];

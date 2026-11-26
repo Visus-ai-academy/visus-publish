@@ -133,6 +133,28 @@ export type Database = {
         };
         Relationships: [];
       };
+      ai_platform_keys: {
+        Row: {
+          provider: string;
+          secret_id: string;
+          updated_at: string;
+          updated_by: string | null;
+        };
+        ComputedFields: never;
+        Insert: {
+          provider: string;
+          secret_id: string;
+          updated_at?: string;
+          updated_by?: string | null;
+        };
+        Update: {
+          provider?: string;
+          secret_id?: string;
+          updated_at?: string;
+          updated_by?: string | null;
+        };
+        Relationships: [];
+      };
       ai_settings: {
         Row: {
           billing_mode: Database["public"]["Enums"]["billing_mode"];
@@ -869,6 +891,7 @@ export type Database = {
           attempts: number;
           caption: string | null;
           caption_provider: string | null;
+          compliance_flags: string[];
           created_at: string;
           created_by: string | null;
           external_post_id: string | null;
@@ -900,6 +923,7 @@ export type Database = {
           attempts?: number;
           caption?: string | null;
           caption_provider?: string | null;
+          compliance_flags?: string[];
           created_at?: string;
           created_by?: string | null;
           external_post_id?: string | null;
@@ -930,6 +954,7 @@ export type Database = {
           attempts?: number;
           caption?: string | null;
           caption_provider?: string | null;
+          compliance_flags?: string[];
           created_at?: string;
           created_by?: string | null;
           external_post_id?: string | null;
@@ -1010,6 +1035,7 @@ export type Database = {
       _drop_secret: { Args: { p_id: string }; Returns: undefined };
       _put_secret: { Args: { p_id: string; p_name: string; p_value: string }; Returns: string };
       accept_invitation: { Args: { p_token: string }; Returns: string };
+      add_post_flags: { Args: { p_flags: string[]; p_post: string }; Returns: undefined };
       claim_awaiting_confirmation: {
         Args: { p_every?: string; p_limit?: number };
         Returns: {
@@ -1018,6 +1044,7 @@ export type Database = {
           attempts: number;
           caption: string | null;
           caption_provider: string | null;
+          compliance_flags: string[];
           created_at: string;
           created_by: string | null;
           external_post_id: string | null;
@@ -1057,6 +1084,7 @@ export type Database = {
           attempts: number;
           caption: string | null;
           caption_provider: string | null;
+          compliance_flags: string[];
           created_at: string;
           created_by: string | null;
           external_post_id: string | null;
@@ -1105,6 +1133,7 @@ export type Database = {
         }[];
       };
       is_platform_admin: { Args: Record<PropertyKey, never>; Returns: boolean };
+      read_ai_key: { Args: { p_provider: string; p_tenant: string }; Returns: string };
       read_ig_token: { Args: { p_account: string }; Returns: string };
       read_metricool_credentials: {
         Args: { p_tenant: string };
@@ -1130,6 +1159,7 @@ export type Database = {
         Returns: undefined;
       };
       store_metricool_token: { Args: { p_actor?: string; p_tenant: string; p_token: string; p_user_id: string }; Returns: undefined };
+      store_platform_ai_key: { Args: { p_actor?: string; p_key: string; p_provider: string }; Returns: undefined };
       tenant_members: {
         Args: { p_tenant: string };
         Returns: {

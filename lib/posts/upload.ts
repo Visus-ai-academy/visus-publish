@@ -54,7 +54,15 @@ export const draftSchema = z.object({
   theme: z.string().trim().min(2, "Dê um título curto ao post.").max(120),
   caption: z.string().max(2200, "A legenda passa de 2.200 caracteres.").optional().default(""),
   files: z.array(z.object({ name: z.string(), type: z.string(), size: z.number() })).max(10),
+  aiJobId: z.string().uuid().nullish(),
 });
+
+/** Formato sugerido pelo tipo dos arquivos escolhidos (o Stories escolhido fica). */
+export function suggestFormat(current: Format, files: Pick<FileMeta, "type">[]): Format {
+  if (files.length === 0 || current === "story") return current;
+  if (files.length > 1) return "carousel";
+  return kindOf(files[0].type) === "video" ? "reels" : "image";
+}
 
 export function hashtagCount(caption: string) {
   return (caption.match(/(^|\s)#[\p{L}\p{N}_]+/gu) ?? []).length;

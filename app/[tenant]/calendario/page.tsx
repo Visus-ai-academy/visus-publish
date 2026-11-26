@@ -51,7 +51,7 @@ export default async function CalendarPage({ params, searchParams }: PageProps<"
         sub={SCREENS.calendario.sub(tenant.name)}
         actions={
           can(role, "edit_content") ? (
-            <Link href={`/${tenant.slug}/criativos`} className="inline-flex h-10 items-center rounded-md bg-primary px-4 font-semibold text-on-primary hover:bg-[#2a2d34]">
+            <Link href={`/${tenant.slug}/criativos`} className="inline-flex h-10 items-center rounded-md bg-primary px-4 font-semibold text-on-primary hover:bg-primary-hover">
               Subir criativo
             </Link>
           ) : null
@@ -69,7 +69,7 @@ export default async function CalendarPage({ params, searchParams }: PageProps<"
                 key={v}
                 href={`/${tenant.slug}/calendario?mes=${month}&vista=${v}`}
                 aria-current={view === v ? "page" : undefined}
-                className={`inline-flex h-9 items-center rounded px-3 text-[14px] ${view === v ? "bg-muted font-semibold" : "text-text-2 hover:bg-subtle"}`}
+                className={`inline-flex h-9 items-center rounded px-3 text-[14px] ${view === v ? "bg-brand-soft font-semibold text-brand-dark" : "text-text-2 hover:bg-brand-soft/60"}`}
               >
                 {v === "lista" ? "Lista" : "Calendário"}
               </Link>
@@ -98,7 +98,7 @@ export default async function CalendarPage({ params, searchParams }: PageProps<"
         ) : (
           <table className="w-full border-collapse text-left">
             <thead>
-              <tr className="border-b border-border text-[13px] text-muted-fg">
+              <tr className="border-b border-brand/40 text-[13px] text-brand-dark">
                 <th className="py-2 pr-4 font-medium">Data</th>
                 <th className="py-2 pr-4 font-medium">Hora</th>
                 <th className="py-2 pr-3 font-medium">

@@ -31,7 +31,7 @@ export function Sidebar({
         aria-current={active ? "page" : undefined}
         className={cn(
           "flex h-10 items-center gap-2.5 rounded-md px-2.5 text-[14px] transition-colors duration-150",
-          active ? "bg-background font-semibold text-foreground ring-1 ring-border" : "text-text-2 hover:bg-muted",
+          active ? "bg-brand-soft font-semibold text-brand-dark shadow-[inset_3px_0_0_var(--brand)]" : "text-text-2 hover:bg-brand-soft/60 hover:text-foreground",
         )}
       >
         <span className={active ? "text-brand" : "text-muted-fg"}>
@@ -44,7 +44,12 @@ export function Sidebar({
 
   return (
     <aside className="flex w-[240px] shrink-0 flex-col gap-5 border-r border-border bg-sidebar px-3 py-4">
-      <p className="px-2.5 text-[15px] font-bold tracking-tight">Visus Publish</p>
+      <p className="flex items-center gap-2 px-2.5 text-[15px] font-bold tracking-tight">
+        <span aria-hidden className="inline-flex size-7 items-center justify-center rounded-md bg-brand text-[13px] font-bold text-on-primary">
+          V
+        </span>
+        Visus Publish
+      </p>
 
       {tenants.length > 0 ? (
         <div className="flex flex-col gap-1 px-1">

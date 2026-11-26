@@ -30,8 +30,8 @@ export function PageHeader({ title, sub, actions }: { title: string; sub: string
   return (
     <header className="mb-8 flex items-start justify-between gap-4">
       <div>
-        <h1 className="text-[22px] font-semibold tracking-tight">{title}</h1>
-        <p className="mt-1 text-text-2">{sub}</p>
+        <h1 className="border-l-[3px] border-brand pl-3 text-[22px] font-semibold tracking-tight">{title}</h1>
+        <p className="mt-1 pl-[15px] text-text-2">{sub}</p>
       </div>
       {actions}
     </header>

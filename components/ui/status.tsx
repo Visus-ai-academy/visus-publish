@@ -15,7 +15,10 @@ const DOT: Record<PostStatus, string> = {
 
 export function StatusDot({ status }: { status: PostStatus }) {
   return (
-    <span className="inline-flex items-center gap-1.5 whitespace-nowrap">
+    <span
+      className="inline-flex items-center gap-1.5 whitespace-nowrap rounded-full px-2 py-0.5 font-medium text-foreground"
+      style={{ background: `color-mix(in srgb, ${DOT[status]} 14%, white)` }}
+    >
       <span aria-hidden className="size-2 shrink-0 rounded-full" style={{ background: DOT[status] }} />
       {STATUS_LABELS[status]}
     </span>

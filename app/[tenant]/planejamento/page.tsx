@@ -35,7 +35,7 @@ export default async function PlanningPage({ params, searchParams }: PageProps<"
         <EmptyState
           title="Conecte uma conta para planejar"
           body="O planejamento é feito por conta do Instagram."
-          action={<Link className="font-semibold underline" href={`/${tenant.slug}/contas`}>Abrir Contas do Instagram</Link>}
+          action={<Link className="font-semibold text-brand-dark underline" href={`/${tenant.slug}/contas`}>Abrir Contas do Instagram</Link>}
         />
       </>
     );
@@ -71,7 +71,7 @@ export default async function PlanningPage({ params, searchParams }: PageProps<"
                 key={a.id}
                 href={q({ conta: a.id })}
                 aria-current={a.id === account.id ? "page" : undefined}
-                className={`inline-flex h-10 items-center rounded-md px-3 text-[14px] ${a.id === account.id ? "bg-muted font-semibold" : "text-text-2 hover:bg-subtle"}`}
+                className={`inline-flex h-10 items-center rounded-md px-3 text-[14px] ${a.id === account.id ? "bg-brand-soft font-semibold text-brand-dark" : "text-text-2 hover:bg-brand-soft/60"}`}
               >
                 @{a.username}
               </Link>
@@ -128,7 +128,7 @@ export default async function PlanningPage({ params, searchParams }: PageProps<"
               <div className="overflow-x-auto">
                 <table className="w-full min-w-[660px] border-collapse text-left text-[14px]">
                   <thead>
-                    <tr className="border-b border-border text-[13px] text-muted-fg">
+                    <tr className="border-b border-brand/40 text-[13px] text-brand-dark">
                       <th className="px-4 py-2 font-medium">Data</th>
                       <th className="py-2 pr-3 font-medium">
                         <span className="sr-only">Mídia</span>

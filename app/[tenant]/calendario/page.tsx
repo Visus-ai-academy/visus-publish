@@ -3,6 +3,7 @@ import { PageHeader } from "@/components/shell/app-shell";
 import { SCREENS } from "@/components/shell/nav";
 import { EmptyState, ErrorNote } from "@/components/ui/states";
 import { StatusDot } from "@/components/ui/status";
+import { MonthGrid } from "@/components/calendar/month-grid";
 import { firstMediaUrls, Thumb } from "@/components/ui/thumb";
 import { can } from "@/lib/auth/permissions";
 import { FORMAT_LABELS } from "@/lib/posts/upload";
@@ -17,6 +18,7 @@ export default async function CalendarPage({ params, searchParams }: PageProps<"
   const month = typeof sp.mes === "string" && /^\d{4}-\d{2}$/.test(sp.mes) ? sp.mes : current;
   const { start, end } = monthRange(month, tenant.timezone);
   const canPublish = can(role, "publish");
+  const view = sp.vista === "grade" ? "grade" : "lista";
 
   const { data: posts, error } = await supabase
     .from("posts")
@@ -34,7 +36,7 @@ export default async function CalendarPage({ params, searchParams }: PageProps<"
 
   const nav = (delta: number, label: string) => (
     <Link
-      href={`/${tenant.slug}/calendario?mes=${shiftMonth(month, delta)}`}
+      href={`/${tenant.slug}/calendario?mes=${shiftMonth(month, delta)}&vista=${view}`}
       aria-label={label}
       className="inline-flex size-10 items-center justify-center rounded-md border border-border-strong hover:bg-subtle"
     >
@@ -61,10 +63,36 @@ export default async function CalendarPage({ params, searchParams }: PageProps<"
           <h2 className="min-w-[180px] text-center text-[16px] font-semibold first-letter:uppercase">{title}</h2>
           {nav(1, "Próximo mês")}
           <span className="ml-2 text-text-2 tabular-nums">{posts?.length ?? 0} publicações</span>
+          <div role="group" aria-label="Visualização" className="ml-auto inline-flex rounded-md border border-border-strong p-0.5">
+            {(["lista", "grade"] as const).map((v) => (
+              <Link
+                key={v}
+                href={`/${tenant.slug}/calendario?mes=${month}&vista=${v}`}
+                aria-current={view === v ? "page" : undefined}
+                className={`inline-flex h-9 items-center rounded px-3 text-[14px] ${view === v ? "bg-muted font-semibold" : "text-text-2 hover:bg-subtle"}`}
+              >
+                {v === "lista" ? "Lista" : "Calendário"}
+              </Link>
+            ))}
+          </div>
         </div>
 
         {error ? (
           <ErrorNote>Não foi possível carregar o calendário.</ErrorNote>
+        ) : view === "grade" ? (
+          <MonthGrid
+            month={month}
+            today={utcToZoned(new Date(), tenant.timezone).date}
+            posts={posts.map((p) => ({
+              id: p.id,
+              theme: p.theme,
+              status: p.status,
+              date: utcToZoned(new Date(p.scheduled_at), tenant.timezone).date,
+              time: hour.format(new Date(p.scheduled_at)),
+              href: p.status === "published" && p.permalink ? p.permalink : `/${tenant.slug}/planejamento/${p.id}`,
+              thumb: thumbOf(p.id),
+            }))}
+          />
         ) : posts.length === 0 ? (
           <EmptyState title="Nada agendado neste mês" body="Suba um criativo pronto para agendar a primeira publicação." />
         ) : (

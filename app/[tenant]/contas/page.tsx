@@ -72,7 +72,7 @@ export default async function AccountsPage({ params, searchParams }: PageProps<"
         actions={
           isAdmin && metaReady ? (
             // Link comum (sem prefetch): sai do app para o login do Instagram
-            <a href={connectHref} className="inline-flex h-10 items-center rounded-md bg-primary px-4 font-semibold text-on-primary transition-transform duration-150 hover:bg-[#2a2d34] active:scale-[.98]">
+            <a href={connectHref} className="inline-flex h-10 items-center rounded-md bg-primary px-4 font-semibold text-on-primary transition-transform duration-150 hover:bg-primary-hover active:scale-[.98]">
               Conectar conta do Instagram
             </a>
           ) : null
@@ -110,7 +110,7 @@ export default async function AccountsPage({ params, searchParams }: PageProps<"
                   {/* Link comum: sai do app para o login do Metricool */}
                   <a
                     href={`/api/metricool/oauth/start?tenant=${tenant.slug}`}
-                    className="inline-flex h-10 items-center rounded-md bg-primary px-4 font-semibold text-on-primary transition-transform duration-150 hover:bg-[#2a2d34] active:scale-[.98]"
+                    className="inline-flex h-10 items-center rounded-md bg-primary px-4 font-semibold text-on-primary transition-transform duration-150 hover:bg-primary-hover active:scale-[.98]"
                   >
                     {mcConn?.auth_mode === "oauth" ? "Entrar de novo no Metricool" : "Entrar com o Metricool"}
                   </a>
@@ -150,7 +150,7 @@ export default async function AccountsPage({ params, searchParams }: PageProps<"
         ) : (
           <table className="w-full border-collapse text-left">
             <thead>
-              <tr className="border-b border-border text-[13px] text-muted-fg">
+              <tr className="border-b border-brand/40 text-[13px] text-brand-dark">
                 <th className="py-2 pr-4 font-medium">Conta</th>
                 <th className="py-2 pr-4 font-medium">Conexão</th>
                 <th className="py-2 pr-4 font-medium">Publica por</th>

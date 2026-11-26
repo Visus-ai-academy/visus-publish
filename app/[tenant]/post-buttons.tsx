@@ -66,7 +66,7 @@ export function ReviewButtons({ slug, postId }: { slug: string; postId: string }
         </>
       ) : (
         <div className="flex gap-2">
-          <button disabled={pending} onClick={() => decide(true)} className={`${btn} bg-primary px-4 text-on-primary hover:bg-[#2a2d34]`}>
+          <button disabled={pending} onClick={() => decide(true)} className={`${btn} bg-primary px-4 text-on-primary hover:bg-primary-hover`}>
             Aprovar
           </button>
           <button disabled={pending} onClick={() => setRejecting(true)} className={`${btn} border border-border-strong px-4 hover:bg-subtle`}>

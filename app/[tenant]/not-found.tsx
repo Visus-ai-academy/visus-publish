@@ -7,7 +7,7 @@ export default function NotFound() {
       <EmptyState
         title="Cliente não encontrado"
         body="Este endereço não existe ou você não tem acesso a ele."
-        action={<Link className="font-semibold underline" href="/">Voltar para o início</Link>}
+        action={<Link className="font-semibold text-brand-dark underline" href="/">Voltar para o início</Link>}
       />
     </main>
   );

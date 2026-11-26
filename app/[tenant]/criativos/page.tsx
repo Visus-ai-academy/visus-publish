@@ -37,7 +37,7 @@ export default async function CreativesPage({ params }: PageProps<"/[tenant]/cri
           <EmptyState
             title="Conecte uma conta antes de subir criativos"
             body="Os posts saem por uma conta do Instagram conectada a este cliente."
-            action={<Link className="font-semibold underline" href={`/${tenant.slug}/contas`}>Abrir Contas do Instagram</Link>}
+            action={<Link className="font-semibold text-brand-dark underline" href={`/${tenant.slug}/contas`}>Abrir Contas do Instagram</Link>}
           />
         )}
 
@@ -50,7 +50,7 @@ export default async function CreativesPage({ params }: PageProps<"/[tenant]/cri
           ) : (
             <table className="w-full border-collapse text-left">
               <thead>
-                <tr className="border-b border-border text-[13px] text-muted-fg">
+                <tr className="border-b border-brand/40 text-[13px] text-brand-dark">
                   <th className="py-2 pr-4 font-medium">Data</th>
                   <th className="py-2 pr-4 font-medium">Tema</th>
                   <th className="py-2 pr-4 font-medium">Conta</th>

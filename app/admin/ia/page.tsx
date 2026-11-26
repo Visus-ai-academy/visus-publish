@@ -50,7 +50,7 @@ export default async function AdminAiPage() {
             <div className="overflow-x-auto">
               <table className="w-full min-w-[980px] border-collapse text-left">
                 <thead>
-                  <tr className="border-b border-border text-[13px] text-muted-fg">
+                  <tr className="border-b border-brand/40 text-[13px] text-brand-dark">
                     <th className="py-2 pr-4 font-medium">Provedor</th>
                     <th className="py-2 pr-4 font-medium">Chave</th>
                     {TASKS.map((t) => (

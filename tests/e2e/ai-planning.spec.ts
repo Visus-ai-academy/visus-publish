@@ -37,8 +37,21 @@ test("editor pede temas do mês, gera legendas e artes e envia o vídeo do Reels
   await page.goto(`/clinica-aurora/planejamento?mes=${month}`);
   await expect(page.getByRole("heading", { name: /Plano de .* · @aurora\.estetica/ })).toBeVisible();
 
+  // Cadência: a IA propõe pelo nicho, a equipe revisa e salva
+  await expect(page.getByText("(padrão)", { exact: false })).toBeVisible();
+  await page.getByRole("link", { name: "Editar cadência" }).click();
+  await page.getByLabel("Nicho do cliente").fill("Clínica odontológica de estética");
+  await page.getByRole("button", { name: "Sugerir cadência" }).click();
+  await expect(page.getByText("Sugestão da IA: Segunda concentra", { exact: false })).toBeVisible();
+  await expect(page.getByLabel("Formato da vaga 1")).toHaveValue("reels");
+  await expect(page.getByText("2 posts por semana em 1 dia")).toBeVisible();
+  await page.getByRole("button", { name: "Salvar cadência" }).click();
+  await expect(page.getByText("Cadência salva.", { exact: false })).toBeVisible();
+  await page.getByRole("link", { name: "Voltar e sugerir temas" }).click();
+  await expect(page.getByText("2 posts por semana em 1 dia")).toBeVisible();
+
   await page.getByRole("button", { name: /Sugerir temas para/ }).click();
-  await expect(page.getByText("2 temas adicionados.", { exact: false })).toBeVisible();
+  await expect(page.getByText("2 temas adicionados", { exact: false })).toBeVisible();
   const foto = page.getByRole("row").filter({ hasText: "Mitos sobre clareamento" }).first();
   const reels = page.getByRole("row").filter({ hasText: "Um dia na recepção" }).first();
   await expect(foto.getByText("Planejado")).toBeVisible();
@@ -54,4 +67,15 @@ test("editor pede temas do mês, gera legendas e artes e envia o vídeo do Reels
   await page.getByRole("button", { name: "Enviar e agendar" }).click();
   await expect(page.locator("video")).toBeVisible();
   await expect(page.getByRole("link", { name: "Voltar ao planejamento" }).locator("..").getByText("Agendado")).toBeVisible();
+});
+
+test("calendário alterna entre lista e grade do mês", async ({ page }) => {
+  const month = shiftMonth(utcToZoned(new Date(), "America/Sao_Paulo").date.slice(0, 7), 1);
+  await login(page, "edu@aurora.local");
+  await page.goto(`/clinica-aurora/calendario?mes=${month}`);
+  await page.getByRole("link", { name: "Calendário", exact: true }).last().click();
+  await expect(page.getByRole("grid", { name: "Calendário do mês" })).toBeVisible();
+  await expect(page.getByRole("gridcell", { name: /2 posts/ }).filter({ hasText: "Mitos sobre clareamento" })).toBeVisible();
+  await page.getByRole("link", { name: "Lista", exact: true }).click();
+  await expect(page.getByRole("row").filter({ hasText: "Mitos sobre clareamento" })).toBeVisible();
 });

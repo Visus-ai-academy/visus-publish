@@ -7,6 +7,8 @@ import { captionOutputSchema, captionPrompt, composeCaption, type Brand } from "
 import { ASPECT, imagePrompt, themesOutputSchema, themesPrompt, toItems, type ThemeItem } from "./prompts/plan";
 import { captionProvider, imageProvider, type ProvidersConfig } from "./providers";
 import { AiProviderError } from "./providers/types";
+import { cadenceOutputSchema, cadencePrompt, toSlots } from "./prompts/cadence";
+import type { MonthSlot, Slot } from "@/lib/plan/cadence";
 
 type Db = SupabaseClient<Database>;
 type Opts = { providers?: ProvidersConfig };
@@ -30,28 +32,57 @@ async function logJob(db: Db, row: Database["public"]["Tables"]["generation_jobs
   await db.from("generation_jobs").insert({ ...row, finished_at: new Date().toISOString() });
 }
 
-/** Sugere temas para o mês. `db` é service_role e toda query filtra tenant_id. */
+/** Dá um tema para cada vaga da cadência no mês. `db` é service_role e toda query filtra tenant_id. */
 export async function suggestThemes(
   db: Db,
   tenantId: string,
-  input: { accountId: string; monthLabel: string; count: number; firstDay: number; daysInMonth: number; formats: Format[]; existing: string[]; hint?: string },
+  input: { accountId: string; monthLabel: string; slots: MonthSlot[]; existing: string[]; hint?: string; niche?: string | null },
   opts: Opts = {},
 ): Promise<ThemeItem[]> {
+  const { data: account } = await db.from("ig_accounts").select("id, username").eq("tenant_id", tenantId).eq("id", input.accountId).maybeSingle();
+  if (!account) throw new PlanError("Conta não encontrada.");
+  if (!input.slots.length) throw new PlanError("Não há vagas livres na cadência deste mês.");
+  const provider = await pickProvider(db, tenantId, "caption");
+  if (!provider) throw new PlanError(NO_KEY);
+  const brand = await loadBrand(db, tenantId, account.id);
+  const prompt = themesPrompt({ ...input, username: account.username, brand });
+  const request = { source: "themes", account_id: account.id, month: input.monthLabel, slots: input.slots.length };
+  try {
+    const raw = await captionProvider(provider.id, opts.providers).generateCaption({ apiKey: provider.key, model: provider.model, system: prompt.system, user: prompt.user, images: [] });
+    const parsed = themesOutputSchema.safeParse(raw);
+    if (!parsed.success) throw new AiProviderError("A IA respondeu num formato inesperado. Tente de novo.");
+    const items = toItems(parsed.data, input.slots);
+    if (!items.length) throw new AiProviderError("A IA não sugeriu temas válidos para este mês. Tente de novo.");
+    await logJob(db, { tenant_id: tenantId, task: "caption", provider: provider.id, model: provider.model, status: "succeeded", request, result: { items } });
+    return items;
+  } catch (e) {
+    await logJob(db, { tenant_id: tenantId, task: "caption", provider: provider.id, model: provider.model, status: "failed", request, error: publicMessage(e) });
+    throw new PlanError(publicMessage(e));
+  }
+}
+
+/** Propõe uma cadência semanal pelo nicho. Não salva: a equipe revisa antes. */
+export async function suggestCadence(
+  db: Db,
+  tenantId: string,
+  input: { accountId: string; niche: string; hint?: string },
+  opts: Opts = {},
+): Promise<{ slots: Slot[]; reason: string }> {
   const { data: account } = await db.from("ig_accounts").select("id, username").eq("tenant_id", tenantId).eq("id", input.accountId).maybeSingle();
   if (!account) throw new PlanError("Conta não encontrada.");
   const provider = await pickProvider(db, tenantId, "caption");
   if (!provider) throw new PlanError(NO_KEY);
   const brand = await loadBrand(db, tenantId, account.id);
-  const prompt = themesPrompt({ ...input, username: account.username, brand });
-  const request = { source: "themes", account_id: account.id, month: input.monthLabel, count: input.count };
+  const prompt = cadencePrompt({ ...input, username: account.username, brand });
+  const request = { source: "cadence", account_id: account.id };
   try {
     const raw = await captionProvider(provider.id, opts.providers).generateCaption({ apiKey: provider.key, model: provider.model, system: prompt.system, user: prompt.user, images: [] });
-    const parsed = themesOutputSchema.safeParse(raw);
+    const parsed = cadenceOutputSchema.safeParse(raw);
     if (!parsed.success) throw new AiProviderError("A IA respondeu num formato inesperado. Tente de novo.");
-    const items = toItems(parsed.data, input.daysInMonth, input.firstDay).filter((i) => input.formats.includes(i.format)).slice(0, input.count);
-    if (!items.length) throw new AiProviderError("A IA não sugeriu temas válidos para este mês. Tente de novo.");
-    await logJob(db, { tenant_id: tenantId, task: "caption", provider: provider.id, model: provider.model, status: "succeeded", request, result: { items } });
-    return items;
+    const slots = toSlots(parsed.data);
+    if (!slots.length) throw new AiProviderError("A IA não propôs vagas válidas. Tente de novo.");
+    await logJob(db, { tenant_id: tenantId, task: "caption", provider: provider.id, model: provider.model, status: "succeeded", request, result: { slots } });
+    return { slots, reason: parsed.data.motivo };
   } catch (e) {
     await logJob(db, { tenant_id: tenantId, task: "caption", provider: provider.id, model: provider.model, status: "failed", request, error: publicMessage(e) });
     throw new PlanError(publicMessage(e));

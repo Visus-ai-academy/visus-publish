@@ -46,7 +46,7 @@ export function ModelForm({ id, model, options, label }: { id: string; model: st
         <label htmlFor={`m-${id}`} className="sr-only">
           {label}
         </label>
-        <Select id={`m-${id}`} name="model" defaultValue={model} className="h-10 w-56">
+        <Select id={`m-${id}`} name="model" defaultValue={model} className="w-56!">
           {options.map((o) => (
             <option key={o} value={o}>
               {o}

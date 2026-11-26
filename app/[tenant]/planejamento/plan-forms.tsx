@@ -78,20 +78,18 @@ export function SuggestForm({ slug, accountId, month, monthName }: { slug: strin
       }}
     >
       <h2 className="text-[15px] font-semibold">Sugerir temas com IA</h2>
-      <div className="grid grid-cols-[120px_1fr] gap-3">
-        <Field label="Quantidade" htmlFor="s-count">
-          <Select id="s-count" name="count" defaultValue="8">
-            {[4, 8, 12, 16].map((n) => (
-              <option key={n} value={n}>
-                {n} posts
-              </option>
-            ))}
-          </Select>
-        </Field>
-        <Field label="Orientação (opcional)" htmlFor="s-hint">
-          <Input id="s-hint" name="hint" maxLength={300} placeholder="Ex.: campanha de fim de ano" />
-        </Field>
-      </div>
+      <Field label="Quantidade" htmlFor="s-count">
+        <Select id="s-count" name="count" defaultValue="8" className="w-40! self-start">
+          {[4, 8, 12, 16].map((n) => (
+            <option key={n} value={n}>
+              {n} posts
+            </option>
+          ))}
+        </Select>
+      </Field>
+      <Field label="Orientação (opcional)" htmlFor="s-hint">
+        <Input id="s-hint" name="hint" maxLength={300} placeholder="Ex.: campanha de fim de ano" className="w-full" />
+      </Field>
       <fieldset className="flex flex-wrap gap-x-4 gap-y-2">
         <legend className="mb-1 text-[13px] font-medium text-text-2">Formatos</legend>
         {FORMATS.map((f) => (

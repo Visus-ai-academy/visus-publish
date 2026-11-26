@@ -55,3 +55,14 @@ test("editor pede temas do mês, gera legendas e artes e envia o vídeo do Reels
   await expect(page.locator("video")).toBeVisible();
   await expect(page.getByRole("link", { name: "Voltar ao planejamento" }).locator("..").getByText("Agendado")).toBeVisible();
 });
+
+test("calendário alterna entre lista e grade do mês", async ({ page }) => {
+  const month = shiftMonth(utcToZoned(new Date(), "America/Sao_Paulo").date.slice(0, 7), 1);
+  await login(page, "edu@aurora.local");
+  await page.goto(`/clinica-aurora/calendario?mes=${month}`);
+  await page.getByRole("link", { name: "Calendário", exact: true }).last().click();
+  await expect(page.getByRole("grid", { name: "Calendário do mês" })).toBeVisible();
+  await expect(page.getByRole("gridcell", { name: /Dia 28, 2 posts/ })).toContainText("Mitos sobre clareamento");
+  await page.getByRole("link", { name: "Lista", exact: true }).click();
+  await expect(page.getByRole("row").filter({ hasText: "Mitos sobre clareamento" })).toBeVisible();
+});

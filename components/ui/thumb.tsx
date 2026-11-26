@@ -1,6 +1,6 @@
 /** Miniatura do primeiro arquivo do post (foto ou quadro inicial do vídeo), 48 px. */
-export function Thumb({ url, kind, alt, extra = 0 }: { url?: string | null; kind?: string | null; alt: string; extra?: number }) {
-  const box = "size-12 shrink-0 rounded-md bg-muted object-cover";
+export function Thumb({ url, kind, alt, extra = 0, small = false }: { url?: string | null; kind?: string | null; alt: string; extra?: number; small?: boolean }) {
+  const box = `${small ? "size-8" : "size-12"} shrink-0 rounded-md bg-muted object-cover`;
   return (
     <span className="relative inline-flex">
       {!url ? (
@@ -11,7 +11,7 @@ export function Thumb({ url, kind, alt, extra = 0 }: { url?: string | null; kind
         // eslint-disable-next-line @next/next/no-img-element -- URL assinada e temporária
         <img src={url} alt={alt} loading="lazy" className={box} />
       )}
-      {extra > 0 ? <span className="absolute right-0.5 bottom-0.5 rounded bg-black/70 px-1 text-[11px] font-semibold text-white tabular-nums">+{extra}</span> : null}
+      {extra > 0 && !small ? <span className="absolute right-0.5 bottom-0.5 rounded bg-black/70 px-1 text-[11px] font-semibold text-white tabular-nums">+{extra}</span> : null}
     </span>
   );
 }

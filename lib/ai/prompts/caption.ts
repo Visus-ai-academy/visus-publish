@@ -10,6 +10,11 @@ export const captionOutputSchema = z.object({
   legenda: z.string().max(10_000).default(""),
   hashtags: z.array(z.string()).max(60).default([]),
   riscos: z.array(z.string()).max(20).default([]),
+  /** Só no carrossel gerado a partir do tema: roteiro dos slides. */
+  slides: z
+    .array(z.object({ titulo: z.string().trim().min(1).max(80), texto: z.string().trim().max(240).default("") }))
+    .max(10)
+    .default([]),
 });
 export type CaptionOutput = z.infer<typeof captionOutputSchema>;
 
@@ -19,6 +24,8 @@ export type Brand = {
   forbidden_topics?: string | null;
   default_hashtags?: string[] | null;
   is_healthcare?: boolean | null;
+  colors?: string[] | null;
+  fonts?: string[] | null;
 };
 
 export type CaptionPromptInput = {
@@ -27,6 +34,8 @@ export type CaptionPromptInput = {
   frameCount: number;
   username: string;
   hint?: string;
+  /** Sem mídia: a legenda sai do tema do planejamento. */
+  theme?: string;
   brand?: Brand | null;
 };
 
@@ -42,11 +51,17 @@ Se a imagem ou o vídeo mostrar algo que fira essas regras (por exemplo, antes e
 export function captionPrompt(input: CaptionPromptInput): { system: string; user: string } {
   const b = input.brand ?? {};
   const story = input.format === "story";
+  const carousel = input.format === "carousel" && input.frameCount === 0;
   const system = [
     "Você é redator de redes sociais e escreve em português do Brasil.",
-    "Olhe a mídia enviada e escreva o tema e a legenda de um post do Instagram sobre o que ela mostra.",
-    "Não invente fatos que a mídia não mostra (nomes, preços, datas, lugares).",
-    'Responda só com JSON no formato {"tema": string, "legenda": string, "hashtags": string[], "riscos": string[]}.',
+    input.frameCount > 0
+      ? "Olhe a mídia enviada e escreva o tema e a legenda de um post do Instagram sobre o que ela mostra."
+      : "Escreva a legenda de um post do Instagram sobre o tema dado.",
+    "Não invente fatos específicos (nomes, preços, datas, lugares, números).",
+    carousel
+      ? 'Responda só com JSON no formato {"tema": string, "legenda": string, "hashtags": string[], "riscos": string[], "slides": [{"titulo": string, "texto": string}]}.'
+      : 'Responda só com JSON no formato {"tema": string, "legenda": string, "hashtags": string[], "riscos": string[]}.',
+    carousel ? "slides: de 3 a 6 slides; titulo com até 40 caracteres e texto com até 120, para escrever na arte." : "",
     "tema: título curto do post, até 80 caracteres, sem hashtag nem emoji.",
     story
       ? 'legenda: "" (Stories não têm legenda). hashtags: [].'
@@ -60,11 +75,13 @@ export function captionPrompt(input: CaptionPromptInput): { system: string; user
 
   const user = [
     `Formato: ${FORMAT_NAME[input.format]}. Conta: @${input.username}.`,
-    input.mediaKind === "video"
-      ? `A mídia é um vídeo; seguem ${input.frameCount} quadros em ordem.`
-      : input.frameCount > 1
-        ? `Seguem ${input.frameCount} imagens do carrossel em ordem.`
-        : "Segue a imagem do post.",
+    input.frameCount === 0
+      ? `Tema: ${input.theme ?? ""}`
+      : input.mediaKind === "video"
+        ? `A mídia é um vídeo; seguem ${input.frameCount} quadros em ordem.`
+        : input.frameCount > 1
+          ? `Seguem ${input.frameCount} imagens do carrossel em ordem.`
+          : "Segue a imagem do post.",
     b.tone ? `Tom de voz: ${b.tone}` : "",
     b.audience ? `Público: ${b.audience}` : "",
     b.forbidden_topics ? `Não fale de: ${b.forbidden_topics}` : "",

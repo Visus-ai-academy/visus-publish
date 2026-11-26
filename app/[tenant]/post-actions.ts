@@ -126,6 +126,17 @@ export async function discardDraft(slug: string, postId: string) {
   await supabase.from("posts").delete().eq("tenant_id", tenant.id).eq("id", id).eq("status", "planned");
 }
 
+/** Apaga arquivos enviados para um post que não chegou a ser agendado (falha no meio do envio). */
+export async function discardMedia(slug: string, postId: string) {
+  const { tenant, supabase } = await resolveTenant(slug);
+  const id = uuid.parse(postId);
+  const { data: post } = await supabase.from("posts").select("status").eq("tenant_id", tenant.id).eq("id", id).maybeSingle();
+  if (!post || !["planned", "rejected", "generation_failed"].includes(post.status)) return;
+  await supabase.from("post_media").delete().eq("tenant_id", tenant.id).eq("post_id", id);
+  const { data: files } = await supabase.storage.from("media").list(`${tenant.id}/${id}`);
+  if (files?.length) await supabase.storage.from("media").remove(files.map((f) => `${tenant.id}/${id}/${f.name}`));
+}
+
 export async function publishNow(slug: string, postId: string): Promise<Result> {
   const { tenant, role, supabase } = await resolveTenant(slug);
   if (!can(role, "publish")) return { ok: false, error: "Seu papel não permite publicar." };

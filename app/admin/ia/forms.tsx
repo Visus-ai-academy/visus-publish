@@ -37,18 +37,26 @@ export function AiKeyForm({ providers }: { providers: { id: string; label: strin
   );
 }
 
-export function ModelForm({ id, model }: { id: string; model: string }) {
+export function ModelForm({ id, model, options, label }: { id: string; model: string; options: string[]; label: string }) {
   const [state, action, pending] = useActionState(saveModel, undefined);
   return (
-    <form action={action} className="flex items-center gap-2">
+    <form action={action} className="flex flex-col gap-1">
       <input type="hidden" name="id" value={id} />
-      <label htmlFor={`m-${id}`} className="sr-only">
-        Modelo
-      </label>
-      <Input id={`m-${id}`} name="model" defaultValue={model} className="h-10 w-56" />
-      <Button type="submit" variant="secondary" disabled={pending}>
-        Salvar
-      </Button>
+      <div className="flex items-center gap-2">
+        <label htmlFor={`m-${id}`} className="sr-only">
+          {label}
+        </label>
+        <Select id={`m-${id}`} name="model" defaultValue={model} className="h-10 w-56">
+          {options.map((o) => (
+            <option key={o} value={o}>
+              {o}
+            </option>
+          ))}
+        </Select>
+        <Button type="submit" variant="secondary" disabled={pending}>
+          Salvar
+        </Button>
+      </div>
       {state?.error ? <span className="text-[13px] text-danger">{state.error}</span> : null}
       {state?.ok ? <span className="text-[13px] text-text-2">{state.ok}</span> : null}
     </form>

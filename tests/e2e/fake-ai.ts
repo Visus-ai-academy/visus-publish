@@ -4,6 +4,9 @@ import { createServer, type Server } from "node:http";
 export const FAKE_AI_PORT = 54397;
 export const FAKE_AI_KEY = "sk-e2e-chave-falsa-1234567890";
 let last: unknown = null;
+// JPEG 1x1 válido
+const JPEG =
+  "/9j/4AAQSkZJRgABAQAAAQABAAD/2wBDAAgGBgcGBQgHBwcJCQgKDBQNDAsLDBkSEw8UHRofHh0aHBwgJC4nICIsIxwcKDcpLDAxNDQ0Hyc5PTgyPC4zNDL/wAALCAABAAEBAREA/8QAFAABAAAAAAAAAAAAAAAAAAAACf/EABQQAQAAAAAAAAAAAAAAAAAAAAD/2gAIAQEAAD8AKp//2Q==";
 
 export function startFakeAi(): Promise<Server> {
   const server = createServer((req, res) => {
@@ -16,11 +19,15 @@ export function startFakeAi(): Promise<Server> {
       };
       if (req.url === "/__last") return json(200, last);
       if (req.headers.authorization !== `Bearer ${FAKE_AI_KEY}`) return json(401, { error: { message: "invalid key" } });
-      if (req.url === "/v1/models") return json(200, { data: [{ id: "m" }] });
+      if (req.url === "/v1/models") return json(200, { data: ["gpt-4.1-mini", "gpt-5-mini", "gpt-image-1", "whisper-1"].map((id) => ({ id })) });
+      if (req.url === "/v1/images/generations") return json(200, { data: [{ b64_json: JPEG }] });
       if (req.url === "/v1/chat/completions") {
         last = JSON.parse(raw);
-        const content = JSON.stringify({ tema: "Bastidores do atendimento", legenda: "Um dia comum na clínica.\nAgende sua avaliação.", hashtags: ["#bastidores", "clinica"], riscos: [] });
-        return json(200, { choices: [{ message: { content } }] });
+        const sys = String((last as { messages: { content: string }[] }).messages[0].content);
+        const reply = sys.includes("calendário editorial")
+          ? { itens: [{ dia: 28, horario: "18:00", formato: "foto", tema: "Mitos sobre clareamento" }, { dia: 28, horario: "12:00", formato: "reels", tema: "Um dia na recepção" }] }
+          : { tema: "Bastidores do atendimento", legenda: "Um dia comum na clínica.\nAgende sua avaliação.", hashtags: ["#bastidores", "clinica"], riscos: [] };
+        return json(200, { choices: [{ message: { content: JSON.stringify(reply) } }] });
       }
       json(404, {});
     });

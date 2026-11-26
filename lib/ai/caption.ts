@@ -4,7 +4,7 @@ import { FORMATS } from "@/lib/posts/upload";
 import type { Database } from "@/lib/supabase/database.types";
 import { healthFlags, mergeFlags } from "./health";
 import { captionOutputSchema, captionPrompt, composeCaption } from "./prompts/caption";
-import { CAPTION_PROVIDERS, captionProvider, type CaptionProviderId, type ProvidersConfig } from "./providers";
+import { CAPTION_PROVIDERS, captionProvider, providerOf, type CaptionProviderId, type ProvidersConfig } from "./providers";
 import { AiProviderError, type ImagePart } from "./providers/types";
 
 type Db = SupabaseClient<Database>;
@@ -38,13 +38,13 @@ function toPart(dataUrl: string): ImagePart {
   return { mime: head.includes("png") ? "image/png" : "image/jpeg", base64 };
 }
 
-/** Escolhe o provedor: o padrão do cliente, ou o outro se só ele tiver chave. */
-async function pickProvider(db: Db, tenantId: string): Promise<{ id: CaptionProviderId; key: string; model: string } | null> {
+/** Escolhe o provedor da tarefa: o padrão do cliente, ou o outro se só ele tiver chave. */
+export async function pickProvider(db: Db, tenantId: string, task: "caption" | "image" = "caption"): Promise<{ id: CaptionProviderId; key: string; model: string } | null> {
   const [{ data: settings }, { data: models }] = await Promise.all([
-    db.from("ai_settings").select("default_caption_provider").eq("tenant_id", tenantId).maybeSingle(),
-    db.from("ai_models").select("provider, model").eq("task", "caption").eq("active", true),
+    db.from("ai_settings").select("default_caption_provider, default_image_provider").eq("tenant_id", tenantId).maybeSingle(),
+    db.from("ai_models").select("provider, model").eq("task", task).eq("active", true),
   ]);
-  const preferred = settings?.default_caption_provider;
+  const preferred = providerOf(task === "image" ? settings?.default_image_provider : settings?.default_caption_provider);
   const order = [...CAPTION_PROVIDERS].sort((a, b) => Number(b === preferred) - Number(a === preferred));
   for (const id of order) {
     const model = models?.find((m) => m.provider === id)?.model;

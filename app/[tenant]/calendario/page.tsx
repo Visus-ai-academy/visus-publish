@@ -3,6 +3,7 @@ import { PageHeader } from "@/components/shell/app-shell";
 import { SCREENS } from "@/components/shell/nav";
 import { EmptyState, ErrorNote } from "@/components/ui/states";
 import { StatusDot } from "@/components/ui/status";
+import { firstMediaUrls, Thumb } from "@/components/ui/thumb";
 import { can } from "@/lib/auth/permissions";
 import { FORMAT_LABELS } from "@/lib/posts/upload";
 import { resolveTenant } from "@/lib/tenant";
@@ -19,12 +20,13 @@ export default async function CalendarPage({ params, searchParams }: PageProps<"
 
   const { data: posts, error } = await supabase
     .from("posts")
-    .select("id, theme, format, status, scheduled_at, published_at, permalink, last_error, ig_accounts(username)")
+    .select("id, theme, format, status, scheduled_at, published_at, permalink, last_error, ig_accounts(username), post_media(storage_path, kind, position)")
     .eq("tenant_id", tenant.id)
     .gte("scheduled_at", start.toISOString())
     .lt("scheduled_at", end.toISOString())
     .order("scheduled_at");
 
+  const thumbOf = await firstMediaUrls(supabase.storage, posts ?? []);
   const [y, m] = month.split("-").map(Number);
   const title = new Intl.DateTimeFormat("pt-BR", { month: "long", year: "numeric", timeZone: "UTC" }).format(new Date(Date.UTC(y, m - 1, 1)));
   const day = new Intl.DateTimeFormat("pt-BR", { timeZone: tenant.timezone, weekday: "short", day: "2-digit", month: "short" });
@@ -71,6 +73,9 @@ export default async function CalendarPage({ params, searchParams }: PageProps<"
               <tr className="border-b border-border text-[13px] text-muted-fg">
                 <th className="py-2 pr-4 font-medium">Data</th>
                 <th className="py-2 pr-4 font-medium">Hora</th>
+                <th className="py-2 pr-3 font-medium">
+                  <span className="sr-only">Mídia</span>
+                </th>
                 <th className="py-2 pr-4 font-medium">Tema</th>
                 <th className="py-2 pr-4 font-medium">Conta</th>
                 <th className="py-2 pr-4 font-medium">Formato</th>
@@ -91,8 +96,19 @@ export default async function CalendarPage({ params, searchParams }: PageProps<"
                   <tr key={p.id} className="border-b border-row align-top">
                     <td className="py-3 pr-4 whitespace-nowrap">{day.format(new Date(p.scheduled_at))}</td>
                     <td className="py-3 pr-4 tabular-nums">{hour.format(new Date(p.scheduled_at))}</td>
+                    <td className="py-2 pr-3">
+                      {p.status === "published" && p.permalink ? (
+                        <a href={p.permalink} target="_blank" rel="noreferrer" aria-label={`Abrir ${p.theme} no Instagram`}>
+                          <Thumb {...thumbOf(p.id)} alt={p.theme} />
+                        </a>
+                      ) : (
+                        <Thumb {...thumbOf(p.id)} alt={p.theme} />
+                      )}
+                    </td>
                     <td className="py-3 pr-4">
-                      <p className="font-medium">{p.theme}</p>
+                      <Link href={`/${tenant.slug}/planejamento/${p.id}`} className="font-medium hover:underline">
+                        {p.theme}
+                      </Link>
                       {p.status === "failed" && p.last_error ? <p className="text-[13px] text-danger">{p.last_error}</p> : null}
                     </td>
                     <td className="py-3 pr-4 text-text-2">@{p.ig_accounts?.username}</td>

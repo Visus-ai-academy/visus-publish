@@ -83,3 +83,5 @@ A Meta (ou o Metricool, que copia o arquivo para ele) baixa a mídia por uma URL
 - Cliente em `ai_settings.billing_mode = 'own'` usa só as chaves dele (`ai_credentials`); a tela para isso vem na Fase 3.
 - Na tela Criativos prontos, o botão manda à IA a imagem reduzida (ou 4 quadros do vídeo, sem áudio) gerada no navegador. Cada geração fica em `generation_jobs`, sem as imagens.
 - Marca de saúde (`brand_profiles.is_healthcare`): o servidor confere o texto final e junta os riscos que a IA apontou em `posts.compliance_flags`. Post com alerta vai para aprovação mesmo em conta "publica direto".
+- Planejamento (`/[tenant]/planejamento`): temas sugeridos pela IA viram posts `planned` de origem `ai`. "Gerar legendas e criativos" chama uma geração por post (`begin_generation` → `generatePost` → `finish_generation`), cada uma numa chamada de até 300 s. Reels sai só com legenda e volta a `planned` esperando o vídeo da equipe.
+- Na tela Admin → IA, a lista de modelos vem da API do provedor com a chave guardada (`read_platform_ai_key`); sem resposta, mostra uma lista de reserva.

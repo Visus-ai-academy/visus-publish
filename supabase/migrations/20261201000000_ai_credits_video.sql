@@ -13,7 +13,8 @@ alter table ai_credentials add constraint ai_credentials_provider_check check (p
 
 -- ============ 2. Provedor padrão por tarefa ============
 alter table ai_settings alter column default_video_provider set default 'none';
-update ai_settings set default_video_provider = 'none' where default_video_provider not in ('veo', 'higgsfield');
+-- Ninguém escolheu vídeo ainda (não havia tela): começa desligado para não gastar sem querer
+update ai_settings set default_video_provider = 'none';
 update ai_settings set default_caption_provider = 'openai' where default_caption_provider not in ('openai', 'gemini');
 update ai_settings set default_image_provider = 'gemini_image' where default_image_provider not in ('openai_image', 'gemini_image');
 alter table ai_settings

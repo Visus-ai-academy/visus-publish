@@ -98,11 +98,13 @@ export default async function PlanningPage({ params, searchParams }: PageProps<"
           </div>
         </nav>
 
-        <section className="flex flex-wrap items-start gap-5">
-          {canEdit ? (
-            <div className="flex flex-[1_1_300px] flex-col gap-5 rounded-lg border border-border p-5">
-              <AddItemForm slug={tenant.slug} accountId={account.id} defaultDate={defaultDate} />
-              <div className="border-t border-border pt-5">
+        {canEdit ? (
+          <section aria-label="Adicionar e sugerir temas" className="flex flex-col gap-2">
+            <div className="grid items-start gap-5 lg:grid-cols-2">
+              <div className="rounded-lg border border-border p-5">
+                <AddItemForm slug={tenant.slug} accountId={account.id} defaultDate={defaultDate} />
+              </div>
+              <div className="rounded-lg border border-border p-5">
                 <SuggestForm
                   slug={tenant.slug}
                   accountId={account.id}
@@ -111,16 +113,18 @@ export default async function PlanningPage({ params, searchParams }: PageProps<"
                   cadence={{ summary: weeklySummary(cadence.slots), saved: cadence.saved, free: freeSlots.length, href: `${base}/cadencia?conta=${account.id}&mes=${month}` }}
                 />
               </div>
-              <p className="border-t border-border pt-4 text-[13px] text-text-2">
-                Depois de gerar, @{account.username} {account.require_approval ? "manda os posts para aprovação." : "agenda direto (posts com alerta de saúde vão para aprovação)."}{" "}
-                <Link href={`/${tenant.slug}/contas`} className="underline">
-                  Mudar em Contas
-                </Link>
-              </p>
             </div>
-          ) : null}
+            <p className="text-[13px] text-text-2">
+              Depois de gerar, @{account.username} {account.require_approval ? "manda os posts para aprovação." : "agenda direto (posts com alerta de saúde vão para aprovação)."}{" "}
+              <Link href={`/${tenant.slug}/contas`} className="text-brand-dark underline">
+                Mudar em Contas
+              </Link>
+            </p>
+          </section>
+        ) : null}
 
-          <div className="flex min-w-0 flex-[999_1_560px] flex-col rounded-lg border border-border">
+        <section>
+          <div className="flex min-w-0 flex-col rounded-lg border border-border">
             <div className="flex flex-wrap items-center justify-between gap-3 border-b border-border px-4 py-3.5">
               <div>
                 <h2 className="text-[15px] font-semibold">

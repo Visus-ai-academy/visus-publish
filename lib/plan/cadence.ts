@@ -14,8 +14,8 @@ export type Slot = z.infer<typeof slotSchema>;
 
 export const cadenceSchema = z
   .array(slotSchema)
-  .max(40, "No máximo 40 vagas por semana.")
-  .refine((s) => new Set(s.map((x) => `${x.weekday} ${x.time}`)).size === s.length, "Há duas vagas no mesmo dia e horário.");
+  .max(40, "No máximo 40 posts por semana.")
+  .refine((s) => new Set(s.map((x) => `${x.weekday} ${x.time}`)).size === s.length, "Há dois slots de post no mesmo dia e horário. Mude o horário ou desmarque o dia repetido.");
 
 /** Padrão de uma conta nova (editável): 5 posts por semana, formatos variados. */
 export const DEFAULT_CADENCE: Slot[] = [
@@ -63,4 +63,28 @@ export function weeklySummary(slots: Slot[]): string {
   if (!slots.length) return "Nenhuma vaga definida";
   const days = new Set(slots.map((s) => s.weekday)).size;
   return `${slots.length} ${slots.length === 1 ? "post" : "posts"} por semana em ${days} ${days === 1 ? "dia" : "dias"}`;
+}
+
+/** Linha do editor: um horário e formato que vale para vários dias da semana. */
+export type SlotRow = { days: number[]; time: string; format: Format };
+
+const dayOrder = (d: number) => (d + 6) % 7;
+
+/** Junta as vagas salvas (uma por dia) em linhas com o mesmo horário e formato. */
+export function groupSlots(slots: Slot[]): SlotRow[] {
+  const rows = new Map<string, SlotRow>();
+  for (const s of slots) {
+    const k = `${s.time} ${s.format}`;
+    const row = rows.get(k) ?? { days: [], time: s.time, format: s.format };
+    if (!row.days.includes(s.weekday)) row.days.push(s.weekday);
+    rows.set(k, row);
+  }
+  return [...rows.values()]
+    .map((r) => ({ ...r, days: [...r.days].sort((a, b) => dayOrder(a) - dayOrder(b)) }))
+    .sort((a, b) => dayOrder(a.days[0]) - dayOrder(b.days[0]) || a.time.localeCompare(b.time));
+}
+
+/** Volta as linhas para uma vaga por dia, como o banco guarda. */
+export function expandRows(rows: SlotRow[]): Slot[] {
+  return sortSlots(rows.flatMap((r) => r.days.map((weekday) => ({ weekday, time: r.time, format: r.format }))));
 }

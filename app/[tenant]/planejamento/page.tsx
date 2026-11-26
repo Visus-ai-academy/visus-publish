@@ -179,7 +179,7 @@ export default async function PlanningPage({ params, searchParams }: PageProps<"
                           <td className="py-3 pr-4 text-text-2">{FORMAT_LABELS[r.format]}</td>
                           <td className="py-3 pr-4 text-text-2">{r.origin === "upload" ? "Equipe" : providerLabel(r.media_provider ?? r.caption_provider)}</td>
                           <td className="py-3 pr-4">{waitingVideo ? <span className="text-text-2">Aguardando vídeo</span> : <StatusDot status={r.status} />}</td>
-                          <td className="py-3 pr-4 text-right">
+                          <td className="w-px py-3 pr-4 text-right whitespace-nowrap">
                             {canEdit ? <RowActions slug={tenant.slug} postId={r.id} canGenerate={r.origin === "ai" && GENERATABLE.has(r.status)} regenerate={!!r.caption} /> : null}
                           </td>
                         </tr>

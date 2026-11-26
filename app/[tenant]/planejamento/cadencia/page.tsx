@@ -16,7 +16,7 @@ export default async function CadencePage({ params, searchParams }: PageProps<"/
   const month = typeof sp.mes === "string" && /^\d{4}-\d{2}$/.test(sp.mes) ? sp.mes : "";
   const back = `/${tenant.slug}/planejamento?${new URLSearchParams({ ...(month ? { mes: month } : {}), ...(account ? { conta: account.id } : {}) })}`;
 
-  const header = <PageHeader title="Cadência de publicação" sub="Dias, horários e formatos de cada semana. A sugestão de temas preenche essas vagas." />;
+  const header = <PageHeader back={{ href: back, label: "Voltar ao planejamento" }} title="Cadência de publicação" sub="Dias, horários e formatos de cada semana. A sugestão de temas preenche essas vagas." />;
   if (!account) {
     return (
       <>
@@ -32,9 +32,6 @@ export default async function CadencePage({ params, searchParams }: PageProps<"/
       {header}
       <div className="flex flex-col gap-5">
         <nav aria-label="Conta" className="flex flex-wrap items-center gap-3">
-          <Link href={back} className="text-[14px] text-brand-dark underline">
-            Voltar ao planejamento
-          </Link>
           <div className="flex flex-wrap gap-1" role="group" aria-label="Conta">
             {accounts!.map((a) => (
               <Link

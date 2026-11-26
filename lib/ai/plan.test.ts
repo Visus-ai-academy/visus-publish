@@ -143,3 +143,19 @@ describe("cadência", () => {
     ]);
   });
 });
+
+import { expandRows, groupSlots } from "@/lib/plan/cadence";
+
+describe("slots de post em vários dias", () => {
+  it("agrupa dias com o mesmo horário e formato e volta a uma vaga por dia", () => {
+    const daily = [0, 1, 2, 3, 4, 5, 6].map((weekday) => ({ weekday, time: "09:00", format: "story" as const }));
+    const slots = [...daily, { weekday: 3, time: "18:00", format: "reels" as const }, { weekday: 1, time: "18:00", format: "reels" as const }];
+    const rows = groupSlots(slots);
+    expect(rows).toEqual([
+      { days: [1, 2, 3, 4, 5, 6, 0], time: "09:00", format: "story" },
+      { days: [1, 3], time: "18:00", format: "reels" },
+    ]);
+    expect(expandRows(rows)).toHaveLength(9);
+    expect(expandRows(rows)[0]).toEqual({ weekday: 1, time: "09:00", format: "story" });
+  });
+});

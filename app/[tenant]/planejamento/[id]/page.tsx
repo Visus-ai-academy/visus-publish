@@ -1,4 +1,3 @@
-import Link from "next/link";
 import { notFound } from "next/navigation";
 import { PageHeader } from "@/components/shell/app-shell";
 import { StatusDot } from "@/components/ui/status";
@@ -34,12 +33,9 @@ export default async function PlanItemPage({ params }: PageProps<"/[tenant]/plan
 
   return (
     <>
-      <PageHeader title={post.theme} sub={`@${post.ig_accounts?.username} · ${FORMAT_LABELS[post.format]} · ${when.format(new Date(post.scheduled_at))}`} />
+      <PageHeader back={{ href: `/${tenant.slug}/planejamento?mes=${month}`, label: "Voltar ao planejamento" }} title={post.theme} sub={`@${post.ig_accounts?.username} · ${FORMAT_LABELS[post.format]} · ${when.format(new Date(post.scheduled_at))}`} />
       <div className="flex max-w-[1040px] flex-col gap-5">
         <div className="flex flex-wrap items-center gap-4">
-          <Link href={`/${tenant.slug}/planejamento?mes=${month}`} className="text-[14px] text-brand-dark underline">
-            Voltar ao planejamento
-          </Link>
           <StatusDot status={post.status} />
           {post.is_ai_generated ? <span className="text-[13px] text-text-2">Arte gerada com IA (o Instagram mostra o selo)</span> : null}
         </div>

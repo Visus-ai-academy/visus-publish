@@ -6,12 +6,14 @@ import { Button } from "@/components/ui/button";
 import { Field, Input, Select } from "@/components/ui/input";
 import { ErrorNote } from "@/components/ui/states";
 import { Notice } from "@/components/ui/status";
-import { sortSlots, WEEKDAYS, weeklySummary, type Slot } from "@/lib/plan/cadence";
+import { expandRows, groupSlots, WEEKDAYS, WEEKDAY_SHORT, weeklySummary, type Slot, type SlotRow } from "@/lib/plan/cadence";
 import { FORMATS, FORMAT_LABELS, type Format } from "@/lib/posts/upload";
 import { proposeCadence, saveCadence } from "../actions";
 
 // Segunda primeiro, como na agenda de trabalho
 const DAY_ORDER = [1, 2, 3, 4, 5, 6, 0];
+const short = (d: number) => WEEKDAY_SHORT[d][0].toUpperCase() + WEEKDAY_SHORT[d].slice(1);
+const sortDays = (days: number[]) => [...days].sort((a, b) => DAY_ORDER.indexOf(a) - DAY_ORDER.indexOf(b));
 
 export function CadenceEditor({
   slug,
@@ -33,7 +35,8 @@ export function CadenceEditor({
   back: string;
 }) {
   const router = useRouter();
-  const [slots, setSlots] = useState<Slot[]>(initial);
+  const [rows, setRows] = useState<SlotRow[]>(() => groupSlots(initial));
+  const slots = expandRows(rows);
   const [niche, setNiche] = useState(initialNiche);
   const [reason, setReason] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -42,25 +45,35 @@ export function CadenceEditor({
   const [saving, startSave] = useTransition();
   const [thinking, startThink] = useTransition();
 
-  const update = (i: number, patch: Partial<Slot>) => {
-    setSlots((s) => s.map((x, n) => (n === i ? { ...x, ...patch } : x)));
+  const touch = () => {
     setDirty(true);
     setDone(null);
+  };
+  const update = (i: number, patch: Partial<SlotRow>) => {
+    setRows((r) => r.map((x, n) => (n === i ? { ...x, ...patch } : x)));
+    touch();
+  };
+  const toggleDay = (i: number, d: number) => {
+    const days = rows[i].days;
+    update(i, { days: sortDays(days.includes(d) ? days.filter((x) => x !== d) : [...days, d]) });
   };
   const remove = (i: number) => {
-    setSlots((s) => s.filter((_, n) => n !== i));
-    setDirty(true);
-    setDone(null);
+    setRows((r) => r.filter((_, n) => n !== i));
+    touch();
   };
   const add = () => {
-    setSlots((s) => [...s, { weekday: 1, time: "18:00", format: "image" }]);
-    setDirty(true);
-    setDone(null);
+    // Começa num horário ainda livre na segunda, para não repetir um slot existente
+    setRows((r) => {
+      const used = new Set(r.filter((x) => x.days.includes(1)).map((x) => x.time));
+      const time = ["18:00", "12:00", "09:00", "20:00", "15:00"].find((t) => !used.has(t)) ?? "10:00";
+      return [...r, { days: [1], time, format: "image" }];
+    });
+    touch();
   };
 
   return (
     <section className="flex flex-wrap items-start gap-5">
-      <div className="flex min-w-0 flex-[2_1_520px] flex-col gap-4 rounded-lg border border-border p-5">
+      <div className="flex min-w-0 flex-[3_1_640px] flex-col gap-4 rounded-lg border border-border p-5">
         <div className="flex flex-wrap items-baseline justify-between gap-2">
           <h2 className="text-[15px] font-semibold">Semana de @{username}</h2>
           <p className="text-[13px] text-text-2 tabular-nums">
@@ -68,13 +81,13 @@ export function CadenceEditor({
             {saved ? "" : " · padrão, ainda não salvo"}
           </p>
         </div>
-        {slots.length === 0 ? (
-          <p className="rounded-md bg-subtle px-3 py-6 text-center text-[14px] text-text-2">Nenhuma vaga. Adicione dias e horários ou peça uma sugestão à IA.</p>
+        {rows.length === 0 ? (
+          <p className="rounded-md bg-subtle px-3 py-6 text-center text-[14px] text-text-2">Nenhum slot de post. Adicione dias e horários ou peça uma sugestão à IA.</p>
         ) : (
           <table className="w-full text-[14px]">
             <thead>
               <tr className="border-b border-brand/40 text-left text-[13px] text-brand-dark">
-                <th className="py-2 pr-3 font-medium">Dia da semana</th>
+                <th className="py-2 pr-3 font-medium">Dias da semana</th>
                 <th className="py-2 pr-3 font-medium">Horário</th>
                 <th className="py-2 pr-3 font-medium">Formato</th>
                 <th className="py-2 font-medium">
@@ -83,45 +96,71 @@ export function CadenceEditor({
               </tr>
             </thead>
             <tbody>
-              {slots.map((s, i) => (
-                <tr key={i} className="border-b border-row">
-                  <td className="py-2 pr-3">
-                    <Select aria-label={`Dia da vaga ${i + 1}`} value={s.weekday} disabled={!canEdit} onChange={(e) => update(i, { weekday: Number(e.target.value) })}>
-                      {DAY_ORDER.map((d) => (
-                        <option key={d} value={d}>
-                          {WEEKDAYS[d]}
-                        </option>
-                      ))}
-                    </Select>
-                  </td>
-                  <td className="py-2 pr-3">
-                    <Input aria-label={`Horário da vaga ${i + 1}`} type="time" value={s.time} disabled={!canEdit} onChange={(e) => update(i, { time: e.target.value })} className="tabular-nums" />
-                  </td>
-                  <td className="py-2 pr-3">
-                    <Select aria-label={`Formato da vaga ${i + 1}`} value={s.format} disabled={!canEdit} onChange={(e) => update(i, { format: e.target.value as Format })}>
-                      {FORMATS.map((f) => (
-                        <option key={f} value={f}>
-                          {FORMAT_LABELS[f]}
-                        </option>
-                      ))}
-                    </Select>
-                  </td>
-                  <td className="py-2 text-right">
-                    {canEdit ? (
-                      <button type="button" onClick={() => remove(i)} className="h-10 rounded-md px-3 text-[13px] font-semibold text-text-2 hover:bg-muted" aria-label={`Remover vaga ${i + 1}`}>
-                        Remover
-                      </button>
-                    ) : null}
-                  </td>
-                </tr>
-              ))}
+              {rows.map((r, i) => {
+                const all = r.days.length === 7;
+                return (
+                  <tr key={i} className="border-b border-row align-top">
+                    <td className="py-2 pr-3">
+                      <div role="group" aria-label={`Dias do slot ${i + 1}`} className="flex flex-wrap gap-1">
+                        {DAY_ORDER.map((d) => {
+                          const on = r.days.includes(d);
+                          return (
+                            <button
+                              key={d}
+                              type="button"
+                              disabled={!canEdit}
+                              aria-pressed={on}
+                              aria-label={WEEKDAYS[d]}
+                              title={WEEKDAYS[d]}
+                              onClick={() => toggleDay(i, d)}
+                              className={`h-10 min-w-10 rounded-md border px-1.5 text-[13px] font-semibold transition-colors duration-150 active:scale-[.98] motion-reduce:transition-none ${on ? "border-brand bg-brand text-white" : "border-border text-text-2 hover:bg-brand-soft/60"}`}
+                            >
+                              {short(d)}
+                            </button>
+                          );
+                        })}
+                        {canEdit ? (
+                          <button
+                            type="button"
+                            aria-pressed={all}
+                            onClick={() => update(i, { days: all ? [r.days[0] ?? 1] : [...DAY_ORDER] })}
+                            className="h-10 rounded-md px-2 text-[13px] font-semibold text-brand-dark underline hover:bg-brand-soft/60"
+                          >
+                            {all ? "Só um dia" : "Todos os dias"}
+                          </button>
+                        ) : null}
+                      </div>
+                      {r.days.length === 0 ? <p className="mt-1 text-[12px] text-danger">Escolha ao menos um dia.</p> : null}
+                    </td>
+                    <td className="py-2 pr-3">
+                      <Input aria-label={`Horário do slot ${i + 1}`} type="time" value={r.time} disabled={!canEdit} onChange={(e) => update(i, { time: e.target.value })} className="w-32! tabular-nums" />
+                    </td>
+                    <td className="py-2 pr-3">
+                      <Select aria-label={`Formato do slot ${i + 1}`} value={r.format} disabled={!canEdit} onChange={(e) => update(i, { format: e.target.value as Format })} className="w-36!">
+                        {FORMATS.map((f) => (
+                          <option key={f} value={f}>
+                            {FORMAT_LABELS[f]}
+                          </option>
+                        ))}
+                      </Select>
+                    </td>
+                    <td className="py-2 text-right">
+                      {canEdit ? (
+                        <button type="button" onClick={() => remove(i)} className="h-10 rounded-md px-3 text-[13px] font-semibold text-text-2 hover:bg-muted" aria-label={`Remover slot ${i + 1}`}>
+                          Remover
+                        </button>
+                      ) : null}
+                    </td>
+                  </tr>
+                );
+              })}
             </tbody>
           </table>
         )}
         {canEdit ? (
           <>
             <Button type="button" variant="secondary" onClick={add} disabled={slots.length >= 40} className="self-start">
-              Adicionar vaga
+              Adicionar slot de post
             </Button>
             {error ? <ErrorNote>{error}</ErrorNote> : null}
             {done ? <Notice tone="success">{done}</Notice> : null}
@@ -131,11 +170,12 @@ export function CadenceEditor({
                 disabled={saving || !dirty}
                 onClick={() => {
                   setError(null);
+                  const empty = rows.findIndex((r) => r.days.length === 0);
+                  if (empty >= 0) return setError(`Escolha ao menos um dia no slot ${empty + 1}.`);
                   startSave(async () => {
-                    const sorted = sortSlots(slots);
-                    const r = await saveCadence(slug, { accountId, niche, slots: sorted });
+                    const r = await saveCadence(slug, { accountId, niche, slots });
                     if (!r.ok) return setError(r.error);
-                    setSlots(sorted);
+                    setRows(groupSlots(slots));
                     setDirty(false);
                     setReason(null);
                     setDone("Cadência salva. A sugestão de temas vai seguir estas vagas.");
@@ -168,7 +208,7 @@ export function CadenceEditor({
             startThink(async () => {
               const r = await proposeCadence(slug, { accountId, niche, hint: String(fd.get("hint") ?? "") || undefined });
               if (!r.ok) return setError(r.error);
-              setSlots(r.slots);
+              setRows(groupSlots(r.slots));
               setReason(r.reason || null);
               setDirty(true);
             });

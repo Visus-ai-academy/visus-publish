@@ -15,7 +15,7 @@ export function geminiProvider(cfg: ProviderConfig = {}): CaptionProvider {
         }),
         signal: AbortSignal.timeout(60_000),
       });
-      if (!res.ok) throw await failure("Gemini", res);
+      if (!res.ok) throw await failure("Gemini", res, req.model);
       const body = (await res.json()) as { candidates?: { content?: { parts?: { text?: string }[] }; finishReason?: string }[] };
       const c = body.candidates?.[0];
       const text = c?.content?.parts?.map((p) => p.text ?? "").join("") ?? "";

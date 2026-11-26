@@ -14,7 +14,7 @@ export function geminiImageProvider(cfg: ProviderConfig = {}): ImageProvider {
         }),
         signal: AbortSignal.timeout(180_000),
       });
-      if (!res.ok) throw await failure("Gemini", res);
+      if (!res.ok) throw await failure("Gemini", res, req.model);
       const body = (await res.json()) as { candidates?: { content?: { parts?: { inlineData?: { mimeType?: string; data?: string } }[] }; finishReason?: string }[] };
       const c = body.candidates?.[0];
       const img = c?.content?.parts?.find((p) => p.inlineData?.data)?.inlineData;

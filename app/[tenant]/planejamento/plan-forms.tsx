@@ -28,23 +28,23 @@ export function AddItemForm({ slug, accountId, defaultDate }: { slug: string; ac
       }}
     >
       <h2 className="text-[15px] font-semibold">Adicionar ao planejamento</h2>
-      <div className="grid grid-cols-2 gap-3">
+      <div className="grid gap-3 sm:grid-cols-3">
         <Field label="Dia" htmlFor="p-date">
           <Input id="p-date" name="date" type="date" required defaultValue={defaultDate} />
         </Field>
         <Field label="Horário" htmlFor="p-time">
           <Input id="p-time" name="time" type="time" required defaultValue="18:00" />
         </Field>
+        <Field label="Formato" htmlFor="p-format">
+          <Select id="p-format" name="format" defaultValue="image">
+            {FORMATS.map((f) => (
+              <option key={f} value={f}>
+                {FORMAT_LABELS[f]}
+              </option>
+            ))}
+          </Select>
+        </Field>
       </div>
-      <Field label="Formato" htmlFor="p-format">
-        <Select id="p-format" name="format" defaultValue="image">
-          {FORMATS.map((f) => (
-            <option key={f} value={f}>
-              {FORMAT_LABELS[f]}
-            </option>
-          ))}
-        </Select>
-      </Field>
       <Field label="Tema" htmlFor="p-theme">
         <Input id="p-theme" required maxLength={120} value={theme} onChange={(e) => setTheme(e.target.value)} placeholder="Ex.: como reduzir faltas em consultas" />
       </Field>

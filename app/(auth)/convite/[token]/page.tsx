@@ -20,7 +20,7 @@ export default async function InvitePage({ params }: PageProps<"/convite/[token]
       <EmptyState
         title="Convite inválido ou expirado"
         body="Peça a quem convidou você para enviar um novo link."
-        action={<Link className="font-semibold underline" href="/login">Ir para o login</Link>}
+        action={<Link className="font-semibold text-brand-dark underline" href="/login">Ir para o login</Link>}
       />
     );
   }
@@ -45,7 +45,7 @@ export default async function InvitePage({ params }: PageProps<"/convite/[token]
           <SignUpForm token={token} email={inv.email} />
           <p className="mt-4 text-[13px] text-text-2">
             Já tem conta?{" "}
-            <Link className="font-semibold underline" href={`/login?next=/convite/${token}`}>
+            <Link className="font-semibold text-brand-dark underline" href={`/login?next=/convite/${token}`}>
               Entrar
             </Link>
           </p>

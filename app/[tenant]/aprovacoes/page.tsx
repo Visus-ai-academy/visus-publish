@@ -33,7 +33,7 @@ export default async function ApprovalsPage({ params }: PageProps<"/[tenant]/apr
           <EmptyState
             title="Nenhuma publicação esperando você"
             body="Conteúdos para contas que pedem aprovação aparecem aqui. Contas que publicam direto vão para o calendário como agendadas."
-            action={<Link className="font-semibold underline" href={`/${tenant.slug}/calendario`}>Abrir calendário</Link>}
+            action={<Link className="font-semibold text-brand-dark underline" href={`/${tenant.slug}/calendario`}>Abrir calendário</Link>}
           />
         ) : (
           posts.map((p) => {

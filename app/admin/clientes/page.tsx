@@ -36,7 +36,7 @@ export default async function ClientsPage() {
         ) : (
           <table className="w-full border-collapse text-left">
             <thead>
-              <tr className="border-b border-border text-[13px] text-muted-fg">
+              <tr className="border-b border-brand/40 text-[13px] text-brand-dark">
                 <th className="py-2 pr-4 font-medium">Cliente</th>
                 <th className="py-2 pr-4 font-medium">Plano</th>
                 <th className="py-2 pr-4 text-right font-medium">Contas</th>

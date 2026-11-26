@@ -37,7 +37,7 @@ export default async function PlanItemPage({ params }: PageProps<"/[tenant]/plan
       <PageHeader title={post.theme} sub={`@${post.ig_accounts?.username} · ${FORMAT_LABELS[post.format]} · ${when.format(new Date(post.scheduled_at))}`} />
       <div className="flex max-w-[1040px] flex-col gap-5">
         <div className="flex flex-wrap items-center gap-4">
-          <Link href={`/${tenant.slug}/planejamento?mes=${month}`} className="text-[14px] underline">
+          <Link href={`/${tenant.slug}/planejamento?mes=${month}`} className="text-[14px] text-brand-dark underline">
             Voltar ao planejamento
           </Link>
           <StatusDot status={post.status} />

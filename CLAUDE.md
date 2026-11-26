@@ -64,7 +64,9 @@ lib/metricool/                  Metricool (provedor inicial; cada conta escolhe 
                                 ou conector MCP com OAuth, que funciona no plano Free (mcp.ts, oauth.ts, connector.ts)
 lib/publishing/publisher.ts     publicação: claim com lock, limite da Meta, container salvo antes do publish, retentativas;
                                 pelo Metricool: envia, guarda external_post_id e confirma depois (sem duplicar)
-lib/ai/providers/               openai, gemini, gemini-image, canva, higgsfield, veo (interface única)
+lib/ai/providers/               openai, gemini, gemini-image, higgsfield, veo (interface única; Canva adiado)
+lib/ai/credits.ts               débito de créditos antes da IA e estorno (charge_credits / grant_credits)
+lib/ai/video.ts                 vídeo do Reels assíncrono: começa no provedor, poll-generation termina
 lib/ai/prompts/                 caption, image, carousel, themes, analysis (+ schemas Zod)
 supabase/functions/             (futuro) generate, poll-async-generation, insights, weekly-analysis.
                                 Na Fase 1 as rotinas de publicação ficaram em app/api/jobs para reaproveitar

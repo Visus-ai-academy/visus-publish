@@ -133,7 +133,7 @@ export function GenerateAll({ slug, ids }: { slug: string; ids: string[] }) {
               if (!r.ok) {
                 errs.push(r.error);
                 // Sem chave ou recusa da conta: não adianta seguir
-                if (/configurada|chave/.test(r.error)) break;
+                if (/configurada|chave|créditos/.test(r.error)) break;
               }
               router.refresh();
             }

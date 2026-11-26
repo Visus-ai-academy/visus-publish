@@ -29,7 +29,7 @@ export function AiKeyForm({ providers }: { providers: { id: string; label: strin
         </Button>
       </div>
       <p className="text-[13px] text-muted-fg">
-        OpenAI: platform.openai.com → API keys. Gemini: aistudio.google.com → Get API key. A chave é conferida, fica criptografada no cofre e não aparece de novo.
+        OpenAI: platform.openai.com → API keys. Gemini (também usado pelo Veo): aistudio.google.com → Get API key. Higgsfield: console.higgsfield.ai, no formato KEY_ID:KEY_SECRET. A chave é conferida, fica criptografada no cofre e não aparece de novo.
       </p>
       {state?.error ? <ErrorNote>{state.error}</ErrorNote> : null}
       {state?.ok ? <Notice tone="success">{state.ok}</Notice> : null}
@@ -37,7 +37,7 @@ export function AiKeyForm({ providers }: { providers: { id: string; label: strin
   );
 }
 
-export function ModelForm({ id, model, options, label }: { id: string; model: string; options: string[]; label: string }) {
+export function ModelForm({ id, model, cost, options, label }: { id: string; model: string; cost: number; options: string[]; label: string }) {
   const [state, action, pending] = useActionState(saveModel, undefined);
   return (
     <form action={action} className="flex flex-col gap-1">
@@ -46,13 +46,17 @@ export function ModelForm({ id, model, options, label }: { id: string; model: st
         <label htmlFor={`m-${id}`} className="sr-only">
           {label}
         </label>
-        <Select id={`m-${id}`} name="model" defaultValue={model} className="w-56!">
+        <Select id={`m-${id}`} name="model" defaultValue={model} className="w-52!">
           {options.map((o) => (
             <option key={o} value={o}>
               {o}
             </option>
           ))}
         </Select>
+        <label htmlFor={`c-${id}`} className="sr-only">
+          {`Créditos por geração: ${label.replace(", ", " na ")}`}
+        </label>
+        <Input id={`c-${id}`} name="cost" type="number" min={0} step="0.5" defaultValue={cost} className="w-20! tabular-nums" title="Créditos por geração" />
         <Button type="submit" variant="secondary" disabled={pending}>
           Salvar
         </Button>

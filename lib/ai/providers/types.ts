@@ -93,3 +93,36 @@ export interface ImageProvider {
 export function fromBase64(b64: string): Uint8Array {
   return Uint8Array.from(Buffer.from(b64, "base64"));
 }
+
+export type VideoRequest = {
+  apiKey: string;
+  model: string;
+  prompt: string;
+  /** Reels e Stories são verticais. */
+  aspect: "9:16";
+  /** Quadro inicial já salvo no Storage (URL assinada). Alguns modelos só animam uma imagem. */
+  imageUrl?: string | null;
+};
+
+export type VideoStatus =
+  | { state: "running" }
+  | { state: "failed"; error: string }
+  | { state: "done"; video: { mime: "video/mp4"; bytes: Uint8Array } };
+
+/** Vídeo é sempre assíncrono: começa no provedor e o servidor confere depois (SPEC §5). */
+export interface VideoProvider {
+  /** Precisa de um quadro inicial (imagem) para gerar o vídeo? */
+  needsImage(model: string): boolean;
+  startVideo(req: VideoRequest): Promise<{ externalId: string }>;
+  checkVideo(req: { apiKey: string; externalId: string }): Promise<VideoStatus>;
+}
+
+/** Baixa o vídeo pronto (no máximo 200 MB). */
+export async function downloadVideo(f: typeof fetch, url: string, headers: Record<string, string>, provider: string): Promise<{ mime: "video/mp4"; bytes: Uint8Array }> {
+  const res = await f(url, { headers, redirect: "follow", signal: AbortSignal.timeout(120_000) });
+  if (!res.ok) throw new AiProviderError(`Não foi possível baixar o vídeo da ${provider} (${res.status}).`, res.status);
+  const buf = new Uint8Array(await res.arrayBuffer());
+  if (!buf.byteLength) throw new AiProviderError(`A ${provider} devolveu um vídeo vazio.`);
+  if (buf.byteLength > 200 * 1024 * 1024) throw new AiProviderError(`O vídeo da ${provider} passou de 200 MB.`);
+  return { mime: "video/mp4", bytes: buf };
+}

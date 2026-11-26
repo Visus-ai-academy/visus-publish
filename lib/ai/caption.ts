@@ -5,8 +5,19 @@ import type { Database } from "@/lib/supabase/database.types";
 import { healthFlags, mergeFlags } from "./health";
 import { captionOutputSchema, captionPrompt, composeCaption, type CaptionPromptInput } from "./prompts/caption";
 import { openaiTranscribe } from "./providers/openai";
-import { CAPTION_PROVIDERS, captionProvider, providerOf, type CaptionProviderId, type ProvidersConfig } from "./providers";
+import {
+  CAPTION_PROVIDERS,
+  captionProvider,
+  providerOf,
+  VIDEO_KEY,
+  VIDEO_PROVIDERS,
+  videoProviderOf,
+  type CaptionProviderId,
+  type ProvidersConfig,
+  type VideoProviderId,
+} from "./providers";
 import { AiProviderError, type ImagePart } from "./providers/types";
+import { charge, withCredits } from "./credits";
 
 type Db = SupabaseClient<Database>;
 
@@ -64,6 +75,25 @@ export async function pickProvider(db: Db, tenantId: string, task: "caption" | "
   return null;
 }
 
+/** Provedor de vídeo escolhido pelo cliente (desligado = null). Se ele não tiver chave, tenta o outro. */
+export async function pickVideoProvider(db: Db, tenantId: string): Promise<{ id: VideoProviderId; key: string; model: string } | null> {
+  const [{ data: settings }, { data: models }] = await Promise.all([
+    db.from("ai_settings").select("default_video_provider").eq("tenant_id", tenantId).maybeSingle(),
+    db.from("ai_models").select("provider, model").eq("task", "video").eq("active", true),
+  ]);
+  const preferred = videoProviderOf(settings?.default_video_provider);
+  if (!preferred) return null;
+  const order = [...VIDEO_PROVIDERS].sort((a, b) => Number(b === preferred) - Number(a === preferred));
+  for (const id of order) {
+    const model = models?.find((m) => m.provider === VIDEO_KEY[id])?.model;
+    if (!model) continue;
+    const { data: key, error } = await db.rpc("read_ai_key", { p_tenant: tenantId, p_provider: VIDEO_KEY[id] });
+    if (error) throw new Error(`read_ai_key: ${error.message}`);
+    if (key) return { id, key, model };
+  }
+  return null;
+}
+
 /**
  * Gera tema e legenda a partir da mídia (imagem, ou quadros do vídeo).
  * `db` é service_role: toda query filtra tenant_id. Grava o pedido em generation_jobs
@@ -88,6 +118,10 @@ export async function suggestCaption(db: Db, tenantId: string, input: SuggestInp
   if (!provider) throw new SuggestError("A geração com IA ainda não foi configurada. Um administrador precisa cadastrar a chave de IA.");
 
   const audioB64 = input.mediaKind === "video" && input.audio ? input.audio.split(",", 2)[1] : null;
+  // Débito antes de chamar a IA; sem saldo, para aqui com a mensagem para o cliente
+  const credits = await charge(db, tenantId, { provider: provider.id, task: "caption", model: provider.model }).catch((e: unknown) => {
+    throw e instanceof AiProviderError ? new SuggestError(e.message) : e;
+  });
   const { data: job, error: jobErr } = await db
     .from("generation_jobs")
     .insert({
@@ -96,11 +130,15 @@ export async function suggestCaption(db: Db, tenantId: string, input: SuggestInp
       provider: provider.id,
       model: provider.model,
       status: "running",
+      credits: credits.amount || null,
       request: { source: "media", format: input.format, media_kind: input.mediaKind, frames: input.frames.length, audio: !!audioB64, account_id: account.id, hint: input.hint ?? null },
     })
     .select("id")
     .single();
-  if (jobErr || !job) throw new Error(`generation_jobs: ${jobErr?.message}`);
+  if (jobErr || !job) {
+    await credits.refund();
+    throw new Error(`generation_jobs: ${jobErr?.message}`);
+  }
 
   const finish = (patch: Database["public"]["Tables"]["generation_jobs"]["Update"]) =>
     db.from("generation_jobs").update({ ...patch, finished_at: new Date().toISOString() }).eq("tenant_id", tenantId).eq("id", job.id);
@@ -112,8 +150,10 @@ export async function suggestCaption(db: Db, tenantId: string, input: SuggestInp
     else if (audioB64) {
       const { data: m } = await db.from("ai_models").select("model").eq("provider", "openai").eq("task", "transcription").eq("active", true).limit(1).maybeSingle();
       if (m) {
-        // Sem transcrição a legenda ainda sai pelos quadros; não derruba a geração
-        const transcript = await openaiTranscribe(opts.providers?.openai ?? {}, { apiKey: provider.key, model: m.model, base64: audioB64 }).catch((e) => {
+        // Sem transcrição a legenda ainda sai pelos quadros; não derruba a geração (nem por falta de saldo)
+        const transcript = await withCredits(db, tenantId, { provider: "openai", task: "transcription", model: m.model }, () =>
+          openaiTranscribe(opts.providers?.openai ?? {}, { apiKey: provider.key, model: m.model, base64: audioB64 }),
+        ).catch((e) => {
           console.error("transcrição", e instanceof Error ? e.message : e);
           return "";
         });
@@ -137,6 +177,7 @@ export async function suggestCaption(db: Db, tenantId: string, input: SuggestInp
     return { jobId: job.id, theme, caption, flags, provider: provider.id };
   } catch (e) {
     const message = e instanceof AiProviderError ? e.message : "Não foi possível gerar agora. Tente de novo.";
+    await credits.refund();
     await finish({ status: "failed", error: message });
     throw new SuggestError(message);
   }

@@ -218,7 +218,7 @@ Regras: botão primário preto; oliva só em detalhes (selecionado, gráficos); 
 | 0 | Repo, Supabase, auth, tenants, memberships, RLS + testes de isolamento | usuário de A não vê B |
 | 1 | Conexão Instagram + upload de criativo + agendamento + publicação real | post agendado sai no horário numa conta de teste |
 | 2 | Planejamento + geração de legenda e imagem (1 provedor cada) + aprovação | plano de 1 mês gerado e aprovado |
-| 3 | Demais provedores (Gemini, Nano Banana, Canva, Higgsfield, Veo) + cobrança por créditos/BYOK | troca de provedor por tenant funciona |
+| 3 | Demais provedores (Gemini, Nano Banana, Higgsfield, Veo; Canva adiado) + cobrança por créditos/BYOK | troca de provedor por tenant funciona |
 | 4 | Insights + heatmap + achados com ações | ação "mover horário" aplica no plano |
 | 5 | Admin da plataforma, planos, faturamento, App Review da Meta | cliente externo conecta conta em produção |
 

@@ -1,5 +1,7 @@
 import { timingSafeEqual } from "node:crypto";
 import { NextResponse, type NextRequest } from "next/server";
+import { providersFromEnv } from "@/lib/ai/providers";
+import { pollVideoJobs } from "@/lib/ai/video";
 import { refreshExpiringTokens } from "@/lib/meta/accounts";
 import { MetaApiError, refreshToken } from "@/lib/meta/client";
 import { getMetaConfig } from "@/lib/meta/config";
@@ -43,7 +45,16 @@ export async function POST(request: NextRequest, ctx: RouteContext<"/api/jobs/[j
       // Sem app da Meta configurado, contas da Meta falham com mensagem clara e as do Metricool seguem.
       const meta = cfg ? metaPort(cfg) : unconfiguredMeta;
       const results = await publishDue({ db, meta, metricool: metricoolPort(metricoolEnv()) });
-      return NextResponse.json({ processed: results.length, results });
+      // O mesmo agendador de minuto em minuto confere os vídeos da IA em andamento
+      const videos = await pollVideoJobs(db, { providers: providersFromEnv() }).catch((e: unknown) => {
+        console.error("poll-generation", e instanceof Error ? e.message : e);
+        return [];
+      });
+      return NextResponse.json({ processed: results.length, results, videos: videos.length });
+    }
+    case "poll-generation": {
+      const videos = await pollVideoJobs(db, { providers: providersFromEnv() });
+      return NextResponse.json({ processed: videos.length, done: videos.filter((v) => v.state === "done").length, failed: videos.filter((v) => v.state === "failed").length });
     }
     case "refresh-tokens": {
       if (!cfg) return NextResponse.json({ processed: 0, skipped: "Meta não configurada" });

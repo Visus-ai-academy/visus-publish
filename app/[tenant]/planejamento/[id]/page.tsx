@@ -7,7 +7,7 @@ import { can } from "@/lib/auth/permissions";
 import { FORMAT_LABELS } from "@/lib/posts/upload";
 import { resolveTenant } from "@/lib/tenant";
 import { RowActions } from "../plan-forms";
-import { AttachMedia, CaptionEditor, RegeneratePanel, ResubmitButton } from "./item-forms";
+import { AttachMedia, AutoRefresh, CaptionEditor, RegeneratePanel, ResubmitButton } from "./item-forms";
 
 export const maxDuration = 300;
 
@@ -25,6 +25,13 @@ export default async function PlanItemPage({ params }: PageProps<"/[tenant]/plan
     .eq("id", id)
     .maybeSingle();
   if (!post) notFound();
+  const [{ data: settings }, { data: videoJob }] = await Promise.all([
+    supabase.from("ai_settings").select("default_video_provider").eq("tenant_id", tenant.id).maybeSingle(),
+    post.status === "generating"
+      ? supabase.from("generation_jobs").select("id").eq("tenant_id", tenant.id).eq("post_id", post.id).eq("task", "video").eq("status", "running").limit(1).maybeSingle()
+      : Promise.resolve({ data: null }),
+  ]);
+  const videoEnabled = (settings?.default_video_provider ?? "none") !== "none";
 
   const canEdit = can(role, "edit_content");
   const media = [...post.post_media].sort((a, b) => a.position - b.position);
@@ -54,8 +61,14 @@ export default async function PlanItemPage({ params }: PageProps<"/[tenant]/plan
               after={`/${tenant.slug}/planejamento?mes=${month}`}
             />
           ) : null}
-          {post.is_ai_generated ? <span className="text-[13px] text-text-2">Arte gerada com IA (o Instagram mostra o selo)</span> : null}
+          {post.is_ai_generated ? <span className="text-[13px] text-text-2">{post.format === "reels" ? "Vídeo gerado com IA" : "Arte gerada com IA"} (o Instagram mostra o selo)</span> : null}
         </div>
+        {post.status === "generating" ? (
+          <div className="flex flex-col gap-1 rounded-md bg-subtle px-3 py-2.5 text-[13px] text-text-2">
+            <span>{videoJob ? "O vídeo está sendo gerado pela IA. Costuma levar de 2 a 10 minutos; esta página atualiza sozinha." : "A IA está gerando este post."}</span>
+            <AutoRefresh />
+          </div>
+        ) : null}
         {post.status === "generation_failed" && post.last_error ? <p className="rounded-md bg-danger-bg px-3 py-2.5 text-[13px] text-danger">{post.last_error}</p> : null}
         {post.compliance_flags.length ? (
           <p className="rounded-md bg-danger-bg px-3 py-2.5 text-[13px] text-danger">Pontos de atenção da publicidade médica: {post.compliance_flags.join("; ")}. Vai para aprovação.</p>
@@ -81,7 +94,7 @@ export default async function PlanItemPage({ params }: PageProps<"/[tenant]/plan
               </div>
             ) : (
               <div className="flex aspect-[4/5] items-center justify-center rounded-md border border-dashed border-border-strong bg-subtle p-6 text-center text-[13px] text-text-2">
-                {post.format === "reels" ? "Envie o vídeo do Reels abaixo." : "A arte aparece aqui depois de gerar."}
+                {post.format === "reels" ? (videoEnabled ? "O vídeo aparece aqui depois de gerar, ou envie o seu abaixo." : "Envie o vídeo do Reels abaixo.") : "A arte aparece aqui depois de gerar."}
               </div>
             )}
             {canEdit && !media.length && ["planned", "rejected"].includes(post.status) ? <AttachMedia slug={tenant.slug} postId={post.id} format={post.format} /> : null}
@@ -98,7 +111,7 @@ export default async function PlanItemPage({ params }: PageProps<"/[tenant]/plan
                 <ResubmitButton slug={tenant.slug} postId={post.id} />
               </div>
             ) : null}
-            {canEdit && regenerable ? <RegeneratePanel slug={tenant.slug} postId={post.id} format={post.format} note={regenNote} /> : null}
+            {canEdit && regenerable ? <RegeneratePanel slug={tenant.slug} postId={post.id} format={post.format} note={regenNote} videoEnabled={videoEnabled} /> : null}
             {canEdit && generatable ? (
               <div className="self-start">
                 <RowActions slug={tenant.slug} postId={post.id} canGenerate regenerate={!!post.caption} canDelete={false} />

@@ -1,5 +1,5 @@
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
-import { generatePost, suggestThemes } from "@/lib/ai/plan";
+import { generatePost, suggestCadence, suggestThemes } from "@/lib/ai/plan";
 import type { ProvidersConfig } from "@/lib/ai/providers";
 import { createUser, must, ok, service, slug } from "./helpers";
 
@@ -20,7 +20,8 @@ function fakeAi(opts: { caption?: object; themes?: object; imageStatus?: number 
       return Response.json({ data: [{ b64_json: JPEG_B64 }] });
     }
     calls.chat++;
-    const themes = String(body.messages[0].content).includes("calendário editorial");
+    const sys = String(body.messages[0].content);
+    const themes = sys.includes("calendário editorial") || sys.includes("cadência semanal");
     const reply = themes
       ? (opts.themes ?? { itens: [{ dia: 20, horario: "10:00", formato: "foto", tema: "Dica do mês" }] })
       : (opts.caption ?? { tema: "x", legenda: "Legenda gerada.", hashtags: ["#dica"], riscos: [], slides: [{ titulo: "Um", texto: "a" }, { titulo: "Dois", texto: "b" }, { titulo: "Três", texto: "c" }] });
@@ -147,18 +148,39 @@ describe("gerar legenda e arte", () => {
 });
 
 describe("sugerir temas", () => {
-  it("usa a conta do cliente, respeita formatos e não aceita conta de outro", async () => {
-    const { cfg } = fakeAi({
-      themes: {
-        itens: [
-          { dia: 20, horario: "10:00", formato: "foto", tema: "Dica A" },
-          { dia: 21, horario: "18:00", formato: "stories", tema: "Fora dos formatos" },
-          { dia: 22, horario: "18:00", formato: "reels", tema: "Bastidores" },
-        ],
-      },
-    });
-    const input = { accountId: direct, monthLabel: "dezembro de 2026", count: 8, firstDay: 1, daysInMonth: 31, formats: ["image" as const, "reels" as const], existing: [] };
-    expect((await suggestThemes(service, tenant, input, { providers: cfg })).map((i) => i.theme)).toEqual(["Dica A", "Bastidores"]);
+  it("dá um tema por vaga da cadência e não aceita conta de outro", async () => {
+    const { cfg } = fakeAi({ themes: { temas: [{ vaga: 1, tema: "Dica A" }, { vaga: 2, tema: "Bastidores" }] } });
+    const slots = [
+      { date: "2026-12-07", day: 7, time: "18:00", format: "image" as const },
+      { date: "2026-12-09", day: 9, time: "12:00", format: "reels" as const },
+    ];
+    const input = { accountId: direct, monthLabel: "dezembro de 2026", slots, existing: [] };
+    const items = await suggestThemes(service, tenant, input, { providers: cfg });
+    expect(items.map((i) => `${i.date} ${i.format} ${i.theme}`)).toEqual(["2026-12-07 image Dica A", "2026-12-09 reels Bastidores"]);
     await expect(suggestThemes(service, other, input, { providers: cfg })).rejects.toThrow("Conta não encontrada.");
+  });
+
+  it("propõe cadência pelo nicho sem salvar", async () => {
+    const { cfg } = fakeAi({ themes: { vagas: [{ dia: "seg", horario: "18:00", formato: "foto" }], motivo: "ok" } });
+    const r = await suggestCadence(service, tenant, { accountId: direct, niche: "Odontologia estética" }, { providers: cfg });
+    expect(r).toEqual({ slots: [{ weekday: 1, time: "18:00", format: "image" }], reason: "ok" });
+    expect(must(await service.from("posting_cadences").select("ig_account_id").eq("ig_account_id", direct))).toHaveLength(0);
+    await expect(suggestCadence(service, other, { accountId: direct, niche: "x x x" }, { providers: cfg })).rejects.toThrow("Conta não encontrada.");
+  });
+});
+
+describe("cadência: isolamento e papéis", () => {
+  const slots = [{ weekday: 1, time: "18:00", format: "image" }];
+  it("editor do cliente grava; aprovador só lê; outro cliente não vê nem grava", async () => {
+    ok(await editor.client.from("posting_cadences").upsert({ tenant_id: tenant, ig_account_id: approval, slots, niche: "Clínica" }));
+    expect(must(await approver.client.from("posting_cadences").select("niche").eq("ig_account_id", approval))).toEqual([{ niche: "Clínica" }]);
+    await approver.client.from("posting_cadences").update({ niche: "mudou" }).eq("ig_account_id", approval);
+    expect(must(await outsider.client.from("posting_cadences").select("niche").eq("ig_account_id", approval))).toHaveLength(0);
+    await outsider.client.from("posting_cadences").update({ niche: "invadiu" }).eq("ig_account_id", approval);
+    expect(must(await service.from("posting_cadences").select("niche").eq("ig_account_id", approval).single()).niche).toBe("Clínica");
+    // Outro cliente não cria cadência apontando para conta deste
+    expect((await outsider.client.from("posting_cadences").insert({ tenant_id: other, ig_account_id: health, slots })).error).not.toBeNull();
+    // Lista inválida é recusada pelo banco
+    expect((await service.from("posting_cadences").upsert({ tenant_id: tenant, ig_account_id: health, slots: { a: 1 } })).error).not.toBeNull();
   });
 });

@@ -8,7 +8,9 @@ import { PROVIDER_LABELS, type CaptionProviderId } from "@/lib/ai/providers";
 import { can } from "@/lib/auth/permissions";
 import { FORMAT_LABELS } from "@/lib/posts/upload";
 import { resolveTenant } from "@/lib/tenant";
-import { monthRange, shiftMonth, tomorrowIn, utcToZoned } from "@/lib/time";
+import { monthRange, shiftMonth, tomorrowIn, utcToZoned, zonedToUtc } from "@/lib/time";
+import { loadCadence } from "@/lib/plan/load";
+import { monthSlots, weeklySummary } from "@/lib/plan/cadence";
 import { AddItemForm, GenerateAll, RowActions, SuggestForm } from "./plan-forms";
 
 // Cada geração (legenda + arte) roda numa chamada; carrossel pode levar alguns minutos
@@ -59,6 +61,12 @@ export default async function PlanningPage({ params, searchParams }: PageProps<"
   const pending = (rows ?? []).filter((r) => r.origin === "ai" && GENERATABLE.has(r.status) && !(r.status === "planned" && r.caption));
   const providerLabel = (p: string | null) => (p && p in PROVIDER_LABELS ? PROVIDER_LABELS[p as CaptionProviderId] : "—");
   const defaultDate = month === current ? tomorrowIn(tenant.timezone) : `${month}-01`;
+  const cadence = await loadCadence(supabase, tenant.id, account.id);
+  const soonest = new Date().getTime() + 60 * 60_000;
+  const today = utcToZoned(new Date(), tenant.timezone).date;
+  const taken = new Set((rows ?? []).map((r) => Object.values(utcToZoned(new Date(r.scheduled_at), tenant.timezone)).join(" ")));
+  const freeSlots =
+    month < current ? [] : monthSlots(month, cadence.slots, today.startsWith(month) ? Number(today.slice(8)) + 1 : 1, taken).filter((x) => zonedToUtc(x.date, x.time, tenant.timezone).getTime() > soonest);
 
   return (
     <>
@@ -95,7 +103,13 @@ export default async function PlanningPage({ params, searchParams }: PageProps<"
             <div className="flex flex-[1_1_300px] flex-col gap-5 rounded-lg border border-border p-5">
               <AddItemForm slug={tenant.slug} accountId={account.id} defaultDate={defaultDate} />
               <div className="border-t border-border pt-5">
-                <SuggestForm slug={tenant.slug} accountId={account.id} month={month} monthName={monthName} />
+                <SuggestForm
+                  slug={tenant.slug}
+                  accountId={account.id}
+                  month={month}
+                  monthName={monthName}
+                  cadence={{ summary: weeklySummary(cadence.slots), saved: cadence.saved, free: freeSlots.length, href: `${base}/cadencia?conta=${account.id}&mes=${month}` }}
+                />
               </div>
               <p className="border-t border-border pt-4 text-[13px] text-text-2">
                 Depois de gerar, @{account.username} {account.require_approval ? "manda os posts para aprovação." : "agenda direto (posts com alerta de saúde vão para aprovação)."}{" "}

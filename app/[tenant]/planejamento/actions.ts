@@ -3,13 +3,15 @@
 import { revalidatePath } from "next/cache";
 import { z } from "zod";
 import { complianceFor } from "@/lib/ai/caption";
-import { generatePost, PlanError, suggestThemes } from "@/lib/ai/plan";
+import { generatePost, PlanError, suggestCadence, suggestThemes } from "@/lib/ai/plan";
+import { cadenceSchema, monthSlots, sortSlots, type Slot } from "@/lib/plan/cadence";
+import { loadCadence } from "@/lib/plan/load";
 import { providersFromEnv } from "@/lib/ai/providers";
 import { can } from "@/lib/auth/permissions";
 import { FORMATS, storagePath, validateFiles } from "@/lib/posts/upload";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { resolveTenant } from "@/lib/tenant";
-import { utcToZoned, zonedToUtc } from "@/lib/time";
+import { monthRange, utcToZoned, zonedToUtc } from "@/lib/time";
 
 type Result<T = object> = ({ ok: true } & T) | { ok: false; error: string };
 const uuid = z.string().uuid();
@@ -55,11 +57,10 @@ export async function addPlanItem(slug: string, raw: unknown): Promise<Result> {
 const suggestSchema = z.object({
   accountId: z.string().uuid("Escolha a conta."),
   month: z.string().regex(/^\d{4}-\d{2}$/),
-  count: z.coerce.number().int().min(1).max(20),
   hint: z.string().trim().max(300).optional(),
-  formats: z.array(z.enum(FORMATS)).min(1, "Escolha pelo menos um formato."),
 });
 
+/** Preenche com temas da IA as vagas livres da cadência da conta no mês. */
 export async function suggestPlan(slug: string, raw: unknown): Promise<Result<{ added: number }>> {
   try {
     const { tenant, supabase } = await editor(slug);
@@ -71,6 +72,20 @@ export async function suggestPlan(slug: string, raw: unknown): Promise<Result<{ 
     const today = utcToZoned(new Date(), tenant.timezone).date;
     if (`${s.month}-${String(daysInMonth).padStart(2, "0")}` <= today) return { ok: false, error: "Escolha um mês que ainda não terminou." };
     const firstDay = today.startsWith(s.month) ? Number(today.slice(8)) + 1 : 1;
+
+    const cadence = await loadCadence(supabase, tenant.id, s.accountId);
+    if (!cadence.slots.length) return { ok: false, error: "Defina a cadência da conta antes de sugerir temas." };
+    const { start, end } = monthRange(s.month, tenant.timezone);
+    const { data: inMonth } = await supabase
+      .from("posts")
+      .select("scheduled_at")
+      .eq("tenant_id", tenant.id)
+      .eq("ig_account_id", s.accountId)
+      .gte("scheduled_at", start.toISOString())
+      .lt("scheduled_at", end.toISOString());
+    const taken = new Set((inMonth ?? []).map((p) => Object.values(utcToZoned(new Date(p.scheduled_at), tenant.timezone)).join(" ")));
+    const slots = monthSlots(s.month, cadence.slots, firstDay, taken).filter((x) => zonedToUtc(x.date, x.time, tenant.timezone).getTime() > Date.now() + 60 * 60_000);
+    if (!slots.length) return { ok: false, error: "Todas as vagas da cadência deste mês já têm tema." };
 
     const { data: existing } = await supabase
       .from("posts")
@@ -84,14 +99,17 @@ export async function suggestPlan(slug: string, raw: unknown): Promise<Result<{ 
     const items = await suggestThemes(
       createAdminClient(),
       tenant.id,
-      { accountId: s.accountId, monthLabel, count: s.count, firstDay, daysInMonth, formats: s.formats, existing: (existing ?? []).map((p) => p.theme), hint: s.hint },
+      { accountId: s.accountId, monthLabel, slots, existing: (existing ?? []).map((p) => p.theme), hint: s.hint, niche: cadence.niche },
       { providers: providersFromEnv() },
     );
-    const rows = items
-      .map((i) => ({ ...i, at: zonedToUtc(`${s.month}-${String(i.day).padStart(2, "0")}`, i.time, tenant.timezone) }))
-      .filter((i) => i.at.getTime() > Date.now() + 60 * 60_000)
-      .map((i) => ({ tenant_id: tenant.id, ig_account_id: s.accountId, scheduled_at: i.at.toISOString(), theme: i.theme, format: i.format, origin: "ai" as const }));
-    if (!rows.length) return { ok: false, error: "A IA não sugeriu datas válidas. Tente de novo." };
+    const rows = items.map((i) => ({
+      tenant_id: tenant.id,
+      ig_account_id: s.accountId,
+      scheduled_at: zonedToUtc(i.date, i.time, tenant.timezone).toISOString(),
+      theme: i.theme,
+      format: i.format,
+      origin: "ai" as const,
+    }));
     const { error } = await supabase.from("posts").insert(rows);
     if (error) return { ok: false, error: "Não foi possível salvar os temas." };
     refresh(slug);
@@ -99,6 +117,54 @@ export async function suggestPlan(slug: string, raw: unknown): Promise<Result<{ 
   } catch (e) {
     if (!(e instanceof PlanError)) console.error("suggestPlan", e instanceof Error ? e.message : e);
     return { ok: false, error: e instanceof PlanError ? e.message : "Não foi possível sugerir temas agora." };
+  }
+}
+
+const cadenceInput = z.object({
+  accountId: z.string().uuid("Escolha a conta."),
+  niche: z.string().trim().max(200, "O nicho passa de 200 caracteres.").optional().default(""),
+  slots: cadenceSchema,
+});
+
+export async function saveCadence(slug: string, raw: unknown): Promise<Result> {
+  try {
+    const { tenant, supabase, user } = await editor(slug);
+    const parsed = cadenceInput.safeParse(raw);
+    if (!parsed.success) return { ok: false, error: parsed.error.issues[0].message };
+    const c = parsed.data;
+    const { error } = await supabase.from("posting_cadences").upsert({
+      tenant_id: tenant.id,
+      ig_account_id: c.accountId,
+      niche: c.niche || null,
+      slots: sortSlots(c.slots),
+      updated_by: user.id,
+      updated_at: new Date().toISOString(),
+    });
+    if (error) return { ok: false, error: "Não foi possível salvar a cadência." };
+    revalidatePath(`/${slug}/planejamento`);
+    return { ok: true };
+  } catch (e) {
+    return { ok: false, error: e instanceof PlanError ? e.message : "Não foi possível salvar a cadência." };
+  }
+}
+
+const proposeInput = z.object({
+  accountId: z.string().uuid("Escolha a conta."),
+  niche: z.string().trim().min(3, "Descreva o nicho do cliente.").max(200, "O nicho passa de 200 caracteres."),
+  hint: z.string().trim().max(300).optional(),
+});
+
+/** Pede à IA uma cadência pelo nicho. Não salva: volta para a tela revisar. */
+export async function proposeCadence(slug: string, raw: unknown): Promise<Result<{ slots: Slot[]; reason: string }>> {
+  try {
+    const { tenant } = await editor(slug);
+    const parsed = proposeInput.safeParse(raw);
+    if (!parsed.success) return { ok: false, error: parsed.error.issues[0].message };
+    const r = await suggestCadence(createAdminClient(), tenant.id, parsed.data, { providers: providersFromEnv() });
+    return { ok: true, ...r };
+  } catch (e) {
+    if (!(e instanceof PlanError)) console.error("proposeCadence", e instanceof Error ? e.message : e);
+    return { ok: false, error: e instanceof PlanError ? e.message : "Não foi possível sugerir a cadência agora." };
   }
 }
 

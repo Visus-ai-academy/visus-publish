@@ -24,8 +24,10 @@ export function startFakeAi(): Promise<Server> {
       if (req.url === "/v1/chat/completions") {
         last = JSON.parse(raw);
         const sys = String((last as { messages: { content: string }[] }).messages[0].content);
-        const reply = sys.includes("calendário editorial")
-          ? { itens: [{ dia: 28, horario: "18:00", formato: "foto", tema: "Mitos sobre clareamento" }, { dia: 28, horario: "12:00", formato: "reels", tema: "Um dia na recepção" }] }
+        const reply = sys.includes("cadência semanal")
+          ? { vagas: [{ dia: "seg", horario: "12:00", formato: "reels" }, { dia: "seg", horario: "18:00", formato: "foto" }], motivo: "Segunda concentra o público da clínica." }
+          : sys.includes("calendário editorial")
+          ? { temas: [{ vaga: 1, tema: "Um dia na recepção" }, { vaga: 2, tema: "Mitos sobre clareamento" }] }
           : { tema: "Bastidores do atendimento", legenda: "Um dia comum na clínica.\nAgende sua avaliação.", hashtags: ["#bastidores", "clinica"], riscos: [] };
         return json(200, { choices: [{ message: { content: JSON.stringify(reply) } }] });
       }

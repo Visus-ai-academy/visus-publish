@@ -1,43 +1,44 @@
 import { z } from "zod";
 import type { Format } from "@/lib/posts/upload";
+import { WEEKDAY_SHORT, type MonthSlot } from "@/lib/plan/cadence";
 import type { Brand } from "./caption";
 
-const FORMAT_WORD = { foto: "image", carrossel: "carousel", reels: "reels", stories: "story" } as const satisfies Record<string, Format>;
+export const FORMAT_WORD = { foto: "image", carrossel: "carousel", reels: "reels", stories: "story" } as const satisfies Record<string, Format>;
 
+/** A IA dá um tema para cada vaga numerada da cadência. */
 export const themesOutputSchema = z.object({
-  itens: z
-    .array(
-      z.object({
-        dia: z.coerce.number().int().min(1).max(31),
-        horario: z.string().regex(/^\d{1,2}:\d{2}$/),
-        formato: z.enum(["foto", "carrossel", "reels", "stories"]),
-        tema: z.string().trim().min(3).max(120),
-      }),
-    )
+  temas: z
+    .array(z.object({ vaga: z.coerce.number().int().min(1), tema: z.string().trim().min(3).max(120) }))
     .min(1)
-    .max(40),
+    .max(60),
 });
 
-export type ThemeItem = { day: number; time: string; format: Format; theme: string };
+export type ThemeItem = { date: string; day: number; time: string; format: Format; theme: string };
 
-export function toItems(out: z.infer<typeof themesOutputSchema>, daysInMonth: number, minDay: number): ThemeItem[] {
-  const seen = new Set<string>();
-  return out.itens
-    .map((i) => ({ day: i.dia, time: i.horario.padStart(5, "0"), format: FORMAT_WORD[i.formato], theme: i.tema.replace(/\s+/g, " ") }))
-    .filter((i) => i.day >= minDay && i.day <= daysInMonth && /^([01]\d|2[0-3]):[0-5]\d$/.test(i.time))
-    .filter((i) => !seen.has(i.theme.toLowerCase()) && (seen.add(i.theme.toLowerCase()), true));
+/** Junta os temas às vagas; ignora vaga inexistente, repetida ou tema repetido. */
+export function toItems(out: z.infer<typeof themesOutputSchema>, slots: MonthSlot[]): ThemeItem[] {
+  const seenSlot = new Set<number>();
+  const seenTheme = new Set<string>();
+  const items: ThemeItem[] = [];
+  for (const t of out.temas) {
+    const slot = slots[t.vaga - 1];
+    const theme = t.tema.replace(/\s+/g, " ");
+    if (!slot || seenSlot.has(t.vaga) || seenTheme.has(theme.toLowerCase())) continue;
+    seenSlot.add(t.vaga);
+    seenTheme.add(theme.toLowerCase());
+    items.push({ ...slot, theme });
+  }
+  return items.sort((a, b) => a.date.localeCompare(b.date) || a.time.localeCompare(b.time));
 }
 
 export type ThemesPromptInput = {
   monthLabel: string;
-  count: number;
-  firstDay: number;
-  daysInMonth: number;
   username: string;
   brand?: Brand | null;
+  niche?: string | null;
   existing: string[];
   hint?: string;
-  formats: Format[];
+  slots: MonthSlot[];
 };
 
 const WORD: Record<Format, string> = { image: "foto", carousel: "carrossel", reels: "reels", story: "stories" };
@@ -46,22 +47,24 @@ export function themesPrompt(i: ThemesPromptInput): { system: string; user: stri
   const b = i.brand ?? {};
   const system = [
     "Você é estrategista de conteúdo para Instagram e escreve em português do Brasil.",
-    `Monte um calendário editorial com ${i.count} posts variados (dicas, bastidores, institucional, perguntas frequentes, prova de autoridade).`,
-    `Use dias entre ${i.firstDay} e ${i.daysInMonth}, espalhados pelo mês, em horários de bom alcance (entre 08:00 e 21:00).`,
-    `Formatos permitidos: ${i.formats.map((f) => WORD[f]).join(", ")}.`,
-    "tema: título curto e específico, até 80 caracteres, sem hashtag nem emoji.",
-    'Responda só com JSON: {"itens": [{"dia": number, "horario": "HH:MM", "formato": "foto"|"carrossel"|"reels"|"stories", "tema": string}]}.',
+    `Monte um calendário editorial: dê um tema para cada uma das ${i.slots.length} vagas abaixo, já com dia, horário e formato definidos.`,
+    "Varie os assuntos (dicas, bastidores, institucional, perguntas frequentes, prova de autoridade) e combine o tema com o formato da vaga.",
+    "tema: título curto e específico, até 80 caracteres, sem hashtag nem emoji. Não repita temas.",
+    'Responda só com JSON: {"temas": [{"vaga": number, "tema": string}]}, uma entrada por vaga.',
     b.is_healthcare ? "Perfil de saúde: siga a publicidade médica do CFM/CRO (sem promessa de resultado, antes e depois, preço ou superlativo)." : "",
   ]
     .filter(Boolean)
     .join("\n");
+  const vagas = i.slots.map((s, n) => `${n + 1}. ${WEEKDAY_SHORT[new Date(`${s.date}T12:00:00Z`).getUTCDay()]} ${s.day}, ${s.time}, ${WORD[s.format]}`);
   const user = [
     `Mês: ${i.monthLabel}. Conta: @${i.username}.`,
+    i.niche ? `Nicho: ${i.niche}` : "",
     b.tone ? `Tom de voz: ${b.tone}` : "",
     b.audience ? `Público: ${b.audience}` : "",
     b.forbidden_topics ? `Não fale de: ${b.forbidden_topics}` : "",
     i.existing.length ? `Já planejados (não repita): ${i.existing.slice(0, 40).join("; ")}` : "",
     i.hint ? `Orientação: ${i.hint}` : "",
+    `Vagas:\n${vagas.join("\n")}`,
   ]
     .filter(Boolean)
     .join("\n");

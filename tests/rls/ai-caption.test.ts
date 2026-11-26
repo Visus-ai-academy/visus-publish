@@ -161,3 +161,53 @@ describe("alertas de publicidade médica no post", () => {
     expect((await complianceFor(outsider.client, other, otherAccount, "x", s.jobId)).job).toBeNull();
   });
 });
+
+describe("áudio do vídeo", () => {
+  const AUDIO = "data:audio/wav;base64,UklGRgAAAABXQVZF";
+  const reply = { tema: "Fala do doutor", legenda: "Texto." };
+
+  it("OpenAI: transcreve antes e manda a transcrição no pedido", async () => {
+    const seen: string[] = [];
+    let chatBody = "";
+    const f = (async (url: string, init: RequestInit) => {
+      seen.push(url.replace("http://fake-openai/v1", ""));
+      if (url.endsWith("/audio/transcriptions")) {
+        const form = init.body as FormData;
+        expect(form.get("model")).toBe("gpt-4o-mini-transcribe");
+        return Response.json({ text: "Hoje vou falar sobre clareamento seguro." });
+      }
+      chatBody = String(init.body);
+      return Response.json({ choices: [{ message: { content: JSON.stringify(reply) } }] });
+    }) as unknown as typeof fetch;
+    const s = await suggestCaption(service, tenant, { accountId: plain, format: "reels", mediaKind: "video", frames: [FRAME], audio: AUDIO }, { providers: { openai: { baseUrl: "http://fake-openai/v1", fetch: f } } });
+    expect(seen).toEqual(["/audio/transcriptions", "/chat/completions"]);
+    expect(chatBody).toContain("clareamento seguro");
+    const job = must(await service.from("generation_jobs").select("request, result").eq("id", s.jobId).single());
+    expect(job.request).toMatchObject({ audio: true });
+    expect(job.result).toMatchObject({ audio: "transcribed" });
+    expect(JSON.stringify(job)).not.toContain("UklGR");
+  });
+
+  it("OpenAI: falha na transcrição não derruba a geração", async () => {
+    const f = (async (url: string) =>
+      url.endsWith("/audio/transcriptions") ? new Response("{}", { status: 500 }) : Response.json({ choices: [{ message: { content: JSON.stringify(reply) } }] })) as unknown as typeof fetch;
+    const s = await suggestCaption(service, tenant, { accountId: plain, format: "reels", mediaKind: "video", frames: [FRAME], audio: AUDIO }, { providers: { openai: { baseUrl: "http://fake-openai/v1", fetch: f } } });
+    expect(s.theme).toBe("Fala do doutor");
+  });
+
+  it("Gemini: o áudio vai junto com os quadros", async () => {
+    ok(await service.rpc("store_platform_ai_key", { p_provider: "gemini", p_key: "g-key" }));
+    ok(await service.from("ai_settings").update({ default_caption_provider: "gemini" }).eq("tenant_id", tenant));
+    let body: { contents: { parts: { inlineData?: { mimeType: string } }[] }[] } = { contents: [] };
+    const f = (async (_: string, init: RequestInit) => (
+      (body = JSON.parse(String(init.body))), Response.json({ candidates: [{ content: { parts: [{ text: JSON.stringify(reply) }] } }] })
+    )) as unknown as typeof fetch;
+    try {
+      await suggestCaption(service, tenant, { accountId: plain, format: "reels", mediaKind: "video", frames: [FRAME], audio: AUDIO }, { providers: { gemini: { baseUrl: "http://g", fetch: f } } });
+      expect(body.contents[0].parts.map((p) => p.inlineData?.mimeType).filter(Boolean)).toEqual(["image/jpeg", "audio/wav"]);
+    } finally {
+      await service.from("ai_settings").update({ default_caption_provider: "openai" }).eq("tenant_id", tenant);
+      await service.rpc("store_platform_ai_key", { p_provider: "gemini", p_key: "" });
+    }
+  });
+});

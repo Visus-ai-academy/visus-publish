@@ -1036,6 +1036,7 @@ export type Database = {
       _put_secret: { Args: { p_id: string; p_name: string; p_value: string }; Returns: string };
       accept_invitation: { Args: { p_token: string }; Returns: string };
       add_post_flags: { Args: { p_flags: string[]; p_post: string }; Returns: undefined };
+      begin_generation: { Args: { p_note?: string; p_post: string }; Returns: undefined };
       claim_awaiting_confirmation: {
         Args: { p_every?: string; p_limit?: number };
         Returns: {
@@ -1118,6 +1119,7 @@ export type Database = {
       };
       delete_ig_token: { Args: { p_account: string }; Returns: undefined };
       delete_metricool_connection: { Args: { p_tenant: string }; Returns: undefined };
+      finish_generation: { Args: { p_error?: string; p_post: string }; Returns: Database["public"]["Enums"]["post_status"] };
       finish_publish: {
         Args: { p_error?: string; p_ig_media_id?: string; p_outcome: string; p_permalink?: string; p_post: string; p_retry_at?: string };
         Returns: Database["public"]["Enums"]["post_status"];
@@ -1147,6 +1149,7 @@ export type Database = {
           user_id: string;
         }[];
       };
+      read_platform_ai_key: { Args: { p_provider: string }; Returns: string };
       release_stuck_publishing: { Args: { p_older_than?: string }; Returns: number };
       review_post: { Args: { p_approve: boolean; p_note?: string; p_post: string }; Returns: Database["public"]["Enums"]["post_status"] };
       set_external_post: { Args: { p_external_id: string; p_post: string; p_provider: Database["public"]["Enums"]["publish_provider"] }; Returns: undefined };
@@ -1172,7 +1175,7 @@ export type Database = {
       transition_post: { Args: { p_note?: string; p_post: string; p_to: Database["public"]["Enums"]["post_status"] }; Returns: Database["public"]["Enums"]["post_status"] };
     };
     Enums: {
-      ai_task: "caption" | "image" | "video" | "analysis";
+      ai_task: "caption" | "image" | "video" | "analysis" | "transcription";
       billing_mode: "platform" | "own";
       ig_account_status: "connected" | "needs_reauth" | "disconnected";
       job_status: "queued" | "running" | "succeeded" | "failed";
@@ -1288,7 +1291,7 @@ export const Constants = {
   },
   public: {
     Enums: {
-      ai_task: ["caption", "image", "video", "analysis"],
+      ai_task: ["caption", "image", "video", "analysis", "transcription"],
       billing_mode: ["platform", "own"],
       ig_account_status: ["connected", "needs_reauth", "disconnected"],
       job_status: ["queued", "running", "succeeded", "failed"],

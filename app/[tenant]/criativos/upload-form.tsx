@@ -7,6 +7,7 @@ import { Field, Input, Select } from "@/components/ui/input";
 import { ErrorNote } from "@/components/ui/states";
 import { Notice } from "@/components/ui/status";
 import { createClient } from "@/lib/supabase/client";
+import { audioFor } from "@/lib/media/audio";
 import { FrameError, framesFor } from "@/lib/media/frames";
 import { FORMATS, FORMAT_LABELS, hashtagCount, suggestFormat, validateFiles, type Format } from "@/lib/posts/upload";
 import { createDraft, discardDraft, finalizeDraft, suggestFromMedia } from "../post-actions";
@@ -44,8 +45,9 @@ export function UploadForm({ slug, accounts, defaultDate }: { slug: string; acco
     if (files.length === 0) return setAiError("Escolha o arquivo antes de gerar.");
     startGen(async () => {
       try {
-        const { kind, frames } = await framesFor(files);
-        const res = await suggestFromMedia(slug, { accountId, format, mediaKind: kind, frames, hint: theme.trim() || undefined });
+        const video = files.find((f) => f.type.startsWith("video/"));
+        const [{ kind, frames }, audio] = await Promise.all([framesFor(files), video ? audioFor(video) : Promise.resolve(null)]);
+        const res = await suggestFromMedia(slug, { accountId, format, mediaKind: kind, frames, audio, hint: theme.trim() || undefined });
         if (!res.ok) return setAiError(res.error);
         setTheme(res.theme);
         setCaption(res.caption);
@@ -175,7 +177,7 @@ export function UploadForm({ slug, accounts, defaultDate }: { slug: string; acco
             {generating ? "Gerando…" : ai ? "Gerar de novo com IA" : "Gerar tema e legenda com IA"}
           </Button>
           <p className="text-[13px] text-text-2">
-            A IA olha a imagem ou quadros do vídeo (sem o áudio). Se o Tema já estiver preenchido, ele orienta o texto.
+            A IA olha a imagem, ou os quadros do vídeo e ouve o que é falado (até 3 minutos). Se o Tema já estiver preenchido, ele orienta o texto.
           </p>
         </div>
         {aiError ? <ErrorNote>{aiError}</ErrorNote> : null}

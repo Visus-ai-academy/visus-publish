@@ -11,6 +11,14 @@ const MB = 1024 * 1024;
 export const MAX_IMAGE_BYTES = 8 * MB; // limite da Meta para imagem
 export const MAX_VIDEO_BYTES = 300 * MB; // limite da Meta para Reels
 
+/**
+ * Limite de envio por arquivo do Supabase Storage (configuração global do projeto,
+ * 50 MB no plano Free). Ajuste NEXT_PUBLIC_MAX_UPLOAD_MB se o limite do projeto subir.
+ */
+export const MAX_UPLOAD_BYTES = (Number(process.env.NEXT_PUBLIC_MAX_UPLOAD_MB) || 50) * MB;
+
+const mb = (bytes: number) => Math.round(bytes / MB).toLocaleString("pt-BR");
+
 export type FileMeta = { name: string; type: string; size: number };
 
 export function kindOf(type: string): "image" | "video" | null {
@@ -27,6 +35,8 @@ export function validateFiles(format: Format, files: FileMeta[]): string | null 
     if (!k) return `${f.name}: use JPG, PNG, MP4 ou MOV.`;
     if (k === "image" && f.size > MAX_IMAGE_BYTES) return `${f.name}: imagem acima de 8 MB.`;
     if (k === "video" && f.size > MAX_VIDEO_BYTES) return `${f.name}: vídeo acima de 300 MB.`;
+    if (f.size > MAX_UPLOAD_BYTES)
+      return `${f.name} tem ${mb(f.size)} MB e o limite de envio é ${mb(MAX_UPLOAD_BYTES)} MB. Exporte o vídeo em 1080p ou comprima e tente de novo.`;
   }
   const kinds = files.map((f) => kindOf(f.type));
   switch (format) {
@@ -39,6 +49,17 @@ export function validateFiles(format: Format, files: FileMeta[]): string | null 
     case "carousel":
       return files.length >= 2 && files.length <= 10 ? null : "Carrossel aceita de 2 a 10 arquivos.";
   }
+}
+
+/** Mensagem em pt-BR para uma falha de envio ao Storage, com o motivo quando ele é conhecido. */
+export function uploadErrorMessage(name: string, err: { message?: string; statusCode?: string | number } | null | undefined): string {
+  const msg = (err?.message ?? "").toLowerCase();
+  const status = String(err?.statusCode ?? "");
+  if (status === "413" || msg.includes("maximum allowed size") || msg.includes("too large"))
+    return `${name} passa do limite de envio de ${mb(MAX_UPLOAD_BYTES)} MB. Exporte em 1080p ou comprima e tente de novo.`;
+  if (msg.includes("mime") || status === "415") return `${name}: tipo de arquivo não aceito. Use JPG, PNG, MP4 ou MOV.`;
+  if (msg.includes("failed to fetch") || msg.includes("network")) return `A conexão caiu ao enviar ${name}. Confira a internet e tente de novo.`;
+  return `Não foi possível enviar ${name}. Tente de novo.`;
 }
 
 export function storagePath(tenantId: string, postId: string, index: number, name: string) {

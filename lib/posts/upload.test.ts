@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { hashtagCount, storagePath, validateFiles } from "./upload";
+import { hashtagCount, storagePath, uploadErrorMessage, validateFiles } from "./upload";
 
 const img = (n = "a.jpg", size = 1000) => ({ name: n, type: "image/jpeg", size });
 const vid = (n = "a.mp4") => ({ name: n, type: "video/mp4", size: 5_000_000 });
@@ -29,5 +29,17 @@ describe("utilidades", () => {
   });
   it("conta hashtags", () => {
     expect(hashtagCount("Oi #saude #pele e #clínica_sp. email@x.com")).toBe(3);
+  });
+});
+
+describe("limite de envio do Storage", () => {
+  it("recusa vídeo acima do limite de envio antes de enviar", () => {
+    const big = { name: "DP.mp4", type: "video/mp4", size: 80 * 1024 * 1024 };
+    expect(validateFiles("reels", [big])).toMatch(/80 MB e o limite de envio é 50 MB/);
+  });
+  it("traduz o erro de tamanho do Storage", () => {
+    expect(uploadErrorMessage("DP.mp4", { message: "The object exceeded the maximum allowed size", statusCode: "413" })).toMatch(/limite de envio de 50 MB/);
+    expect(uploadErrorMessage("DP.mp4", { message: "Failed to fetch" })).toMatch(/conexão caiu/);
+    expect(uploadErrorMessage("DP.mp4", { message: "boom" })).toBe("Não foi possível enviar DP.mp4. Tente de novo.");
   });
 });

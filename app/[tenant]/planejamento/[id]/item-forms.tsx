@@ -6,7 +6,7 @@ import { Button } from "@/components/ui/button";
 import { ErrorNote } from "@/components/ui/states";
 import { Notice } from "@/components/ui/status";
 import { createClient } from "@/lib/supabase/client";
-import { hashtagCount, type Format } from "@/lib/posts/upload";
+import { hashtagCount, uploadErrorMessage, type Format } from "@/lib/posts/upload";
 import { discardMedia, finalizeDraft } from "../../post-actions";
 import { attachPaths, generateItem, resubmit, saveCaption } from "../actions";
 
@@ -70,7 +70,7 @@ export function AttachMedia({ slug, postId, format }: { slug: string; postId: st
             const { error: up } = await supabase.storage.from("media").upload(r.paths[i], f, { contentType: f.type });
             if (up) {
               await discardMedia(slug, postId);
-              return setError(`Não foi possível enviar ${f.name}. Tente de novo.`);
+              return setError(uploadErrorMessage(f.name, up));
             }
           }
           const fin = await finalizeDraft(slug, { postId, files: files.map((f, i) => ({ path: r.paths[i], type: f.type })) });

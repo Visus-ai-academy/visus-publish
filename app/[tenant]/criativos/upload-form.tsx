@@ -9,7 +9,7 @@ import { Notice } from "@/components/ui/status";
 import { createClient } from "@/lib/supabase/client";
 import { audioFor } from "@/lib/media/audio";
 import { FrameError, framesFor } from "@/lib/media/frames";
-import { FORMATS, FORMAT_LABELS, hashtagCount, suggestFormat, validateFiles, type Format } from "@/lib/posts/upload";
+import { FORMATS, FORMAT_LABELS, hashtagCount, MAX_UPLOAD_BYTES, suggestFormat, uploadErrorMessage, validateFiles, type Format } from "@/lib/posts/upload";
 import { createDraft, discardDraft, finalizeDraft, suggestFromMedia } from "../post-actions";
 
 type Account = { id: string; username: string; require_approval: boolean };
@@ -38,6 +38,9 @@ export function UploadForm({ slug, accounts, defaultDate }: { slug: string; acco
       setFormat(next);
       setFormatNote(`Formato ajustado para ${FORMAT_LABELS[next]} pelo tipo de arquivo.`);
     } else setFormatNote(null);
+    // Avisa já na escolha, antes de gerar a legenda, quando o arquivo passa do limite de envio.
+    const big = list.some((f) => f.size > MAX_UPLOAD_BYTES);
+    setError(big ? validateFiles(next, list.map((f) => ({ name: f.name, type: f.type, size: f.size }))) : null);
   }
 
   function generate() {
@@ -90,7 +93,7 @@ export function UploadForm({ slug, accounts, defaultDate }: { slug: string; acco
         if (upErr) {
           await discardDraft(slug, draft.postId);
           setStep("");
-          return setError(`Não foi possível enviar ${files[i].name}. Tente de novo.`);
+          return setError(uploadErrorMessage(files[i].name, upErr));
         }
       }
 

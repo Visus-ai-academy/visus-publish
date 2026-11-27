@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { MetaApiError, authorizeUrl, createContainer, exchangeCode, publishingLimit, type MetaConfig } from "./client";
+import { MetaApiError, assignedInstagramAccounts, authorizeUrl, createContainer, exchangeCode, exchangeUnifiedCode, publishingLimit, type MetaConfig } from "./client";
 
 function cfgWith(handler: (url: string, init?: RequestInit) => { status?: number; body: unknown }) {
   const seen: Array<{ url: string; body?: string }> = [];
@@ -55,5 +55,25 @@ describe("cliente da Meta", () => {
     const err = await createContainer(bad.cfg, "t", "1", { kind: "image", imageUrl: "u" }).catch((e) => e);
     expect(err).toBeInstanceOf(MetaApiError);
     expect(err.transient).toBe(false);
+  });
+
+  it("login unificado: entra pelo Facebook com a configuração e usa graph.facebook.com", async () => {
+    const { cfg, seen } = cfgWith((url) => {
+      if (url.includes("/oauth/access_token")) return { body: { access_token: "suat", token_type: "bearer" } };
+      if (url.includes("/me/assigned_instagram_accounts")) return { body: { data: [{ id: "1784" }] } };
+      return { body: { id: "1784", username: "clinica", name: "Clínica" } };
+    });
+    const uni = { ...cfg, loginConfigId: "9876" };
+    const u = new URL(authorizeUrl(uni, "st"));
+    expect(u.host).toBe("www.facebook.com");
+    expect(u.pathname).toBe("/v24.0/dialog/oauth");
+    expect(u.searchParams.get("config_id")).toBe("9876");
+    expect(u.searchParams.get("response_type")).toBe("code");
+    expect(u.searchParams.get("scope")).toBeNull();
+    expect(await exchangeUnifiedCode(uni, "c")).toEqual({ access_token: "suat" });
+    const profiles = await assignedInstagramAccounts(uni, "suat");
+    expect(profiles).toEqual([{ user_id: "1784", username: "clinica", name: "Clínica", profile_picture_url: undefined, account_type: "BUSINESS" }]);
+    expect(seen.every((s) => s.url.startsWith("https://graph.facebook.com/v24.0/"))).toBe(true);
+    expect(seen[0].url).toContain("redirect_uri=");
   });
 });

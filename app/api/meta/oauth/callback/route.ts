@@ -1,7 +1,10 @@
 import { after, NextResponse, type NextRequest } from "next/server";
 import { collectAccount, insightsPort } from "@/lib/insights/collect";
 import { connectAccount } from "@/lib/meta/accounts";
-import { exchangeCode, getProfile, toLongLivedToken } from "@/lib/meta/client";
+import { assignedInstagramAccounts, exchangeCode, exchangeUnifiedCode, getProfile, toLongLivedToken } from "@/lib/meta/client";
+
+/** Token do login unificado sem validade: guarda como 10 anos (a rotina de renovação o ignora). */
+const NEVER_EXPIRES_S = 10 * 365 * 86_400;
 import { getMetaConfig } from "@/lib/meta/config";
 import { OAUTH_NONCE_COOKIE, oauthSecret } from "@/lib/meta/oauth-cookie";
 import { verifyState } from "@/lib/meta/state";
@@ -33,22 +36,37 @@ export async function GET(request: NextRequest) {
   if (!code || !cfg) return done(params.get("error") === "access_denied" ? "erro=cancelado" : "erro=falha_meta");
 
   try {
-    const short = await exchangeCode(cfg, code.replace(/#_$/, ""));
-    const long = await toLongLivedToken(cfg, short.access_token);
-    const profile = await getProfile(cfg, long.access_token);
-    const result = await connectAccount(createAdminClient(), {
-      tenantId: tenant.id,
-      userId: auth.user.id,
-      profile,
-      token: long.access_token,
-      expiresInSeconds: long.expires_in,
-    });
-    if (!result.ok) return done(`erro=${result.reason === "other_tenant" ? "outro_cliente" : "falha_meta"}`);
+    // Apps novos (login unificado): um token do sistema vale para as contas que a pessoa liberou
+    const login = cfg.loginConfigId
+      ? await (async () => {
+          const t = await exchangeUnifiedCode(cfg, code);
+          const profiles = await assignedInstagramAccounts(cfg, t.access_token);
+          // Sem validade informada, o token não vence (a Meta não tem renovação para ele)
+          return { token: t.access_token, expiresIn: t.expires_in ?? NEVER_EXPIRES_S, profiles };
+        })()
+      : await (async () => {
+          const short = await exchangeCode(cfg, code.replace(/#_$/, ""));
+          const long = await toLongLivedToken(cfg, short.access_token);
+          return { token: long.access_token, expiresIn: long.expires_in, profiles: [await getProfile(cfg, long.access_token)] };
+        })();
+    if (!login.profiles.length) return done("erro=sem_conta");
+
+    const db = createAdminClient();
+    const connected: Array<{ id: string; username: string }> = [];
+    let otherTenant = false;
+    for (const profile of login.profiles) {
+      const result = await connectAccount(db, { tenantId: tenant.id, userId: auth.user.id, profile, token: login.token, expiresInSeconds: login.expiresIn });
+      if (result.ok) connected.push({ id: result.accountId, username: profile.username });
+      else if (result.reason === "other_tenant") otherTenant = true;
+    }
+    if (!connected.length) return done(`erro=${otherTenant ? "outro_cliente" : "falha_meta"}`);
     // Primeira leitura das métricas (90 dias de histórico) depois da resposta, sem segurar o login
-    const accountId = result.accountId;
-    after(() => collectAccount(createAdminClient(), insightsPort(cfg), tenant.id, accountId).catch(() => undefined));
-    return done(`conectada=${encodeURIComponent(profile.username)}`);
-  } catch {
+    after(async () => {
+      for (const a of connected) await collectAccount(createAdminClient(), insightsPort(cfg), tenant.id, a.id).catch(() => undefined);
+    });
+    return done(`conectada=${encodeURIComponent(connected.map((a) => a.username).join(", @"))}`);
+  } catch (e) {
+    console.error("meta oauth", e instanceof Error ? e.message : e);
     return done("erro=falha_meta");
   }
 }

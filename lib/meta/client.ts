@@ -17,6 +17,12 @@ export type MetaConfig = {
   appSecret: string;
   redirectUri: string;
   graphVersion: string;
+  /**
+   * Id da configuração do "Login do Facebook para Empresas" (API do Instagram com login unificado).
+   * Apps novos da Meta só têm esse login: a conexão passa pelo facebook.com e a API fica em
+   * graph.facebook.com. Sem ele, usa o login do Instagram (graph.instagram.com) dos apps antigos.
+   */
+  loginConfigId?: string;
   /** Só para testes de ponta a ponta com uma Meta simulada. */
   graphBase?: string;
   fetch?: typeof fetch;
@@ -65,8 +71,12 @@ async function call<T>(cfg: MetaConfig, url: string, schema: z.ZodType<T>, init?
   return schema.parse(body);
 }
 
+export function graphHost(cfg: MetaConfig) {
+  return cfg.graphBase ?? (cfg.loginConfigId ? "https://graph.facebook.com" : "https://graph.instagram.com");
+}
+
 function graph(cfg: MetaConfig, path: string, params: Record<string, string | undefined> = {}) {
-  const u = new URL(`${cfg.graphBase ?? "https://graph.instagram.com"}/${cfg.graphVersion}/${path}`);
+  const u = new URL(`${graphHost(cfg)}/${cfg.graphVersion}/${path}`);
   for (const [k, v] of Object.entries(params)) if (v !== undefined) u.searchParams.set(k, v);
   return u.toString();
 }
@@ -80,6 +90,17 @@ function form(params: Record<string, string | boolean | undefined>) {
 // ---------- OAuth ----------
 
 export function authorizeUrl(cfg: MetaConfig, state: string) {
+  if (cfg.loginConfigId) {
+    // Login unificado: as permissões e a conta do Instagram vêm da configuração (config_id)
+    const u = new URL(`https://www.facebook.com/${cfg.graphVersion}/dialog/oauth`);
+    u.searchParams.set("client_id", cfg.appId);
+    u.searchParams.set("redirect_uri", cfg.redirectUri);
+    u.searchParams.set("config_id", cfg.loginConfigId);
+    u.searchParams.set("response_type", "code");
+    u.searchParams.set("override_default_response_type", "true");
+    u.searchParams.set("state", state);
+    return u.toString();
+  }
   const u = new URL("https://www.instagram.com/oauth/authorize");
   u.searchParams.set("client_id", cfg.appId);
   u.searchParams.set("redirect_uri", cfg.redirectUri);
@@ -131,6 +152,50 @@ const profileSchema = z.object({
 
 export async function getProfile(cfg: MetaConfig, token: string) {
   return call(cfg, graph(cfg, "me", { fields: "user_id,username,name,profile_picture_url,account_type", access_token: token }), profileSchema);
+}
+
+// ---------- Login unificado (Login do Facebook para Empresas) ----------
+
+const unifiedTokenSchema = z.object({ access_token: z.string(), expires_in: z.number().optional() });
+
+/** Troca o code pelo token do usuário do sistema da integração (SUAT). Ele não tem renovação. */
+export async function exchangeUnifiedCode(cfg: MetaConfig, code: string) {
+  return call(
+    cfg,
+    graph(cfg, "oauth/access_token", { client_id: cfg.appId, client_secret: cfg.appSecret, redirect_uri: cfg.redirectUri, code }),
+    unifiedTokenSchema,
+  );
+}
+
+const assignedSchema = z.object({
+  data: z.array(z.object({ id: z.union([z.string(), z.number()]).transform(String) }).passthrough()),
+  paging: z.object({ next: z.string().optional() }).passthrough().optional(),
+});
+
+/** Contas do Instagram que a pessoa liberou para o app no login unificado (sem precisar de Página do Facebook). */
+export async function assignedInstagramAccounts(cfg: MetaConfig, token: string) {
+  const ids: string[] = [];
+  let url: string | undefined = graph(cfg, "me/assigned_instagram_accounts", { limit: "50", access_token: token });
+  while (url && ids.length < 200) {
+    const page: z.infer<typeof assignedSchema> = await call(cfg, url, assignedSchema);
+    ids.push(...page.data.map((a) => a.id));
+    url = page.paging?.next ? sameHost(cfg, page.paging.next) : undefined;
+  }
+  const profiles = [];
+  for (const id of ids) {
+    const p = await call(
+      cfg,
+      graph(cfg, id, { fields: "id,username,name,profile_picture_url", access_token: token }),
+      z.object({ id: z.union([z.string(), z.number()]).transform(String), username: z.string(), name: z.string().optional(), profile_picture_url: z.string().optional() }),
+    );
+    profiles.push({ user_id: p.id, username: p.username, name: p.name, profile_picture_url: p.profile_picture_url, account_type: "BUSINESS" });
+  }
+  return profiles;
+}
+
+/** A próxima página vem com a URL completa da Meta; nos testes, mantém a base simulada. */
+function sameHost(cfg: MetaConfig, next: string) {
+  return cfg.graphBase ? next.replace(/^https:\/\/graph\.(instagram|facebook)\.com/, cfg.graphBase) : next;
 }
 
 // ---------- Publicação ----------
@@ -234,8 +299,7 @@ export async function listMedia(cfg: MetaConfig, token: string, igUserId: string
       out.push(m);
       if (out.length >= max) return out;
     }
-    // A próxima página vem com a URL completa da Meta; nos testes, mantém a base simulada
-    url = page.paging?.next && cfg.graphBase ? page.paging.next.replace(/^https:\/\/graph\.instagram\.com/, cfg.graphBase) : page.paging?.next;
+    url = page.paging?.next ? sameHost(cfg, page.paging.next) : undefined;
   }
   return out;
 }

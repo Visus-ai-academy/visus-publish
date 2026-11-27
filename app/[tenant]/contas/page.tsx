@@ -19,6 +19,7 @@ const ERRORS: Record<string, string> = {
   cancelado: "A conexão foi cancelada no Instagram.",
   outro_cliente: "Esta conta do Instagram já está conectada em outro cliente.",
   falha_meta: "A Meta não confirmou a conexão. Tente de novo em alguns minutos.",
+  sem_conta: "Nenhuma conta do Instagram foi liberada no login da Meta. Entre de novo e marque a conta do Instagram na tela de permissões.",
   mc_sem_permissao: "Só a equipe da Visus conecta o Metricool.",
   mc_cancelado: "O login no Metricool foi cancelado.",
   mc_expirado: "O login no Metricool demorou demais. Tente de novo.",

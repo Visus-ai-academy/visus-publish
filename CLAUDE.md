@@ -54,7 +54,7 @@ app/[tenant]/calendario|planejamento|aprovacoes|criativos|insights|contas|ia|equ
 app/admin/clientes
 app/api/meta/oauth/start|callback  OAuth do Instagram (state assinado + nonce em cookie)
 app/api/metricool/oauth/start|callback  login do conector do Metricool (PKCE, registro dinâmico)
-app/api/jobs/[job]              rotinas chamadas pelo agendador (publish-due, refresh-tokens); ver docs/OPERACAO.md
+app/api/jobs/[job]              rotinas chamadas pelo agendador (publish-due, refresh-tokens, collect-insights, weekly-analysis); ver docs/OPERACAO.md
 lib/supabase/{server,client}.ts
 lib/tenant.ts                   resolve tenant ativo (cookie vp_tenant) e valida membership
 lib/posts/transitions.ts        máquina de estados (chama transition_post / review_post no banco)
@@ -64,6 +64,8 @@ lib/metricool/                  Metricool (provedor inicial; cada conta escolhe 
                                 ou conector MCP com OAuth, que funciona no plano Free (mcp.ts, oauth.ts, connector.ts)
 lib/publishing/publisher.ts     publicação: claim com lock, limite da Meta, container salvo antes do publish, retentativas;
                                 pelo Metricool: envia, guarda external_post_id e confirma depois (sem duplicar)
+lib/insights/                   métricas pela Meta (collect.ts; casa posts do Metricool com mídias), agregados e mapa de calor
+                                (aggregate.ts), achados da IA (analysis.ts) e ação no plano (apply.ts → função apply_finding)
 lib/ai/providers/               openai, gemini, gemini-image, higgsfield, veo (interface única; Canva adiado)
 lib/ai/credits.ts               débito de créditos antes da IA e estorno (charge_credits / grant_credits)
 lib/ai/video.ts                 vídeo do Reels assíncrono: começa no provedor, poll-generation termina

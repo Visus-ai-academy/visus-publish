@@ -22,7 +22,9 @@ Limitações conhecidas do Metricool:
 - a API do Metricool não documenta tudo (tipos POST/STORY, formato de algumas respostas). Confira o primeiro post real de cada formato.
 - pelo conector: o app lê a lista de ferramentas do servidor ao conectar (guardada em `metricool_connections.mcp_tools`) e monta os parâmetros por ela. O conector só lista posts **agendados**; quando o post some da lista depois do horário, o app conclui que saiu e marca "Publicado", sem o link do Instagram. Erro aparece como "Falhou" quando o Metricool o mostra na lista.
 
-**Trocar para a Meta:** quando o app da Meta for liberado (seção 1), o admin do cliente clica em "Conectar conta do Instagram" e entra com a mesma conta. A conta existente passa a publicar pela Meta, sem perder posts nem histórico.
+**Métricas pela Meta, publicação pelo Metricool:** o Metricool Free não entrega métricas. Com o app da Meta configurado (seção 1), o admin do cliente clica em "Ligar métricas pela Meta" na linha da conta (ou em "Conectar pela Meta" na tela Insights) e entra com a mesma conta do Instagram. A conta continua publicando pelo Metricool e o app passa a ler as métricas pela Meta. Se o acesso da Meta vencer, só a leitura das métricas para; a publicação segue.
+
+**Trocar para a Meta:** com a conta ligada nos dois, o admin escolhe em Contas, na coluna "Publica por", entre Metricool e Meta. Posts e histórico ficam.
 
 
 ## 1. App da Meta (uma vez)
@@ -44,6 +46,8 @@ As rotinas rodam no app em `POST /api/jobs/{rotina}` com `Authorization: Bearer 
 |---|---|---|
 | `publish-due` | a cada minuto | publica posts vencidos (lock com `claim_due_posts`, limite da Meta consultado antes) e confirma os enviados ao Metricool |
 | `poll-generation` | a cada minuto (já roda junto com `publish-due`) | confere os vídeos da IA em andamento; pronto vira a mídia do post, falha estorna os créditos, mais de 30 min dá erro |
+| `collect-insights` | a cada hora | lê pela Meta as mídias da conta (90 dias na primeira vez), as métricas de cada uma (mais vezes nos primeiros dias, uma última vez aos 28 dias), os totais do dia e o público (1× por semana). Casa os posts do Metricool com as mídias do Instagram pela legenda e horário. Sem app da Meta, não faz nada |
+| `weekly-analysis` | 1× por semana | a IA de texto do cliente lê os agregados de 90 dias e grava os achados (debita créditos como uma legenda). Pula contas com menos de 5 publicações com métricas |
 | `refresh-tokens` | 1× por dia | renova tokens da Meta que vencem em menos de 10 dias; falha → conta "Reconectar". Sem app da Meta, não faz nada |
 
 Opção A, pelo próprio Supabase (pg_cron + pg_net). Rode no SQL Editor do projeto, trocando domínio e segredo:
@@ -65,6 +69,26 @@ $$);
 select cron.schedule('refresh-tokens', '0 9 * * *', $$
   select net.http_post(
     url := 'https://SEU-DOMINIO/api/jobs/refresh-tokens',
+    headers := jsonb_build_object('authorization', 'Bearer ' ||
+      (select decrypted_secret from vault.decrypted_secrets where name = 'cron_secret'))
+  );
+$$);
+```
+
+Rotinas da Fase 4 (insights e análise), no mesmo SQL Editor:
+
+```sql
+select cron.schedule('collect-insights', '7 * * * *', $$
+  select net.http_post(
+    url := 'https://SEU-DOMINIO/api/jobs/collect-insights',
+    headers := jsonb_build_object('authorization', 'Bearer ' ||
+      (select decrypted_secret from vault.decrypted_secrets where name = 'cron_secret'))
+  );
+$$);
+
+select cron.schedule('weekly-analysis', '0 10 * * 1', $$
+  select net.http_post(
+    url := 'https://SEU-DOMINIO/api/jobs/weekly-analysis',
     headers := jsonb_build_object('authorization', 'Bearer ' ||
       (select decrypted_secret from vault.decrypted_secrets where name = 'cron_secret'))
   );

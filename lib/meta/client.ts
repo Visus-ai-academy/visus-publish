@@ -200,3 +200,138 @@ export async function getPermalink(cfg: MetaConfig, token: string, mediaId: stri
   const r = await call(cfg, graph(cfg, mediaId, { fields: "permalink", access_token: token }), permalinkSchema);
   return r.permalink ?? null;
 }
+
+// ---------- Insights (SPEC §4) ----------
+
+const mediaItemSchema = z.object({
+  id: z.string(),
+  caption: z.string().optional(),
+  media_type: z.string().optional(),
+  media_product_type: z.string().optional(),
+  timestamp: z.string(),
+  permalink: z.string().optional(),
+});
+export type IgMediaItem = z.infer<typeof mediaItemSchema>;
+
+const mediaPageSchema = z.object({
+  data: z.array(mediaItemSchema),
+  paging: z.object({ next: z.string().optional() }).passthrough().optional(),
+});
+
+/** Mídias da conta, das mais novas para as mais antigas, até `since` (ou `max` itens). Stories não entram (a API só lista por 24 h). */
+export async function listMedia(cfg: MetaConfig, token: string, igUserId: string, opts: { since: Date; max?: number }) {
+  const max = opts.max ?? 200;
+  const out: IgMediaItem[] = [];
+  let url: string | undefined = graph(cfg, `${igUserId}/media`, {
+    fields: "id,caption,media_type,media_product_type,timestamp,permalink",
+    limit: "50",
+    access_token: token,
+  });
+  while (url && out.length < max) {
+    const page: z.infer<typeof mediaPageSchema> = await call(cfg, url, mediaPageSchema);
+    for (const m of page.data) {
+      if (new Date(m.timestamp) < opts.since) return out;
+      out.push(m);
+      if (out.length >= max) return out;
+    }
+    // A próxima página vem com a URL completa da Meta; nos testes, mantém a base simulada
+    url = page.paging?.next && cfg.graphBase ? page.paging.next.replace(/^https:\/\/graph\.instagram\.com/, cfg.graphBase) : page.paging?.next;
+  }
+  return out;
+}
+
+const metricValue = z
+  .object({
+    name: z.string(),
+    values: z.array(z.object({ value: z.unknown() })).optional(),
+    total_value: z.object({ value: z.unknown().optional(), breakdowns: z.unknown().optional() }).passthrough().optional(),
+  })
+  .passthrough();
+const insightsSchema = z.object({ data: z.array(metricValue) });
+
+function numberOf(m: z.infer<typeof metricValue>): number | null {
+  const v = m.total_value?.value ?? m.values?.[m.values.length - 1]?.value;
+  return typeof v === "number" && Number.isFinite(v) ? v : null;
+}
+
+export const MEDIA_METRICS = ["views", "reach", "likes", "comments", "saved", "shares", "total_interactions", "profile_visits", "follows"] as const;
+export type MediaMetric = (typeof MEDIA_METRICS)[number];
+export type MediaMetrics = Partial<Record<MediaMetric, number>>;
+
+/** Métricas que a Meta aceita por tipo de mídia (Reels não tem visitas ao perfil nem seguidores). */
+export function metricsFor(productType: string | undefined): MediaMetric[] {
+  if (productType === "REELS") return ["views", "reach", "likes", "comments", "saved", "shares", "total_interactions"];
+  if (productType === "STORY") return ["views", "reach", "shares", "total_interactions", "profile_visits", "follows"];
+  return [...MEDIA_METRICS];
+}
+
+/**
+ * Métricas de uma mídia. A Meta recusa o pedido inteiro se uma métrica não vale para aquele
+ * tipo (código 100); nesse caso tenta de novo só com as básicas.
+ */
+export async function mediaInsights(cfg: MetaConfig, token: string, mediaId: string, productType?: string): Promise<MediaMetrics> {
+  const ask = async (metrics: readonly MediaMetric[]) => {
+    const r = await call(cfg, graph(cfg, `${mediaId}/insights`, { metric: metrics.join(","), access_token: token }), insightsSchema);
+    const out: MediaMetrics = {};
+    for (const m of r.data) {
+      const n = numberOf(m);
+      if (n !== null && (MEDIA_METRICS as readonly string[]).includes(m.name)) out[m.name as MediaMetric] = n;
+    }
+    return out;
+  };
+  try {
+    return await ask(metricsFor(productType));
+  } catch (e) {
+    if (e instanceof MetaApiError && e.code === 100) return ask(["reach", "likes", "comments", "saved", "shares"]);
+    throw e;
+  }
+}
+
+export const ACCOUNT_METRICS = ["reach", "views", "profile_views"] as const;
+export type AccountDay = Partial<Record<(typeof ACCOUNT_METRICS)[number] | "follower_count", number>>;
+
+/** Totais da conta num dia (since/until em segundos). Cada métrica vai num pedido: uma recusada não derruba as outras. */
+export async function accountDay(cfg: MetaConfig, token: string, igUserId: string, since: Date, until: Date): Promise<AccountDay> {
+  const out: AccountDay = {};
+  const s = String(Math.floor(since.getTime() / 1000));
+  const u = String(Math.floor(until.getTime() / 1000));
+  for (const metric of ACCOUNT_METRICS) {
+    try {
+      const r = await call(cfg, graph(cfg, `${igUserId}/insights`, { metric, period: "day", metric_type: "total_value", since: s, until: u, access_token: token }), insightsSchema);
+      const n = r.data[0] ? numberOf(r.data[0]) : null;
+      if (n !== null) out[metric] = n;
+    } catch (e) {
+      if (!(e instanceof MetaApiError) || e.transient || e.status === 401 || e.code === 190) throw e;
+    }
+  }
+  try {
+    const p = await call(cfg, graph(cfg, igUserId, { fields: "followers_count", access_token: token }), z.object({ followers_count: z.number().optional() }));
+    if (typeof p.followers_count === "number") out.follower_count = p.followers_count;
+  } catch (e) {
+    if (!(e instanceof MetaApiError) || e.transient) throw e;
+  }
+  return out;
+}
+
+const breakdownSchema = z.object({
+  results: z.array(z.object({ dimension_values: z.array(z.string()), value: z.number() })).default([]),
+});
+
+/** Público dos seguidores (idade, gênero, cidade). Exige conta com volume mínimo de seguidores; sem dados devolve null. */
+export async function followerDemographics(cfg: MetaConfig, token: string, igUserId: string): Promise<{ age: Record<string, number>; gender: Record<string, number>; cities: Record<string, number> } | null> {
+  const one = async (breakdown: "age" | "gender" | "city") => {
+    try {
+      const r = await call(cfg, graph(cfg, `${igUserId}/insights`, { metric: "follower_demographics", period: "lifetime", metric_type: "total_value", breakdown, access_token: token }), insightsSchema);
+      const raw = (r.data[0]?.total_value?.breakdowns as unknown[] | undefined)?.[0];
+      const parsed = breakdownSchema.safeParse(raw);
+      if (!parsed.success) return null;
+      return Object.fromEntries(parsed.data.results.map((x) => [x.dimension_values[0], x.value]));
+    } catch (e) {
+      if (e instanceof MetaApiError && !e.transient && e.status !== 401 && e.code !== 190) return null;
+      throw e;
+    }
+  };
+  const [age, gender, cities] = [await one("age"), await one("gender"), await one("city")];
+  if (!age && !gender && !cities) return null;
+  return { age: age ?? {}, gender: gender ?? {}, cities: cities ?? {} };
+}

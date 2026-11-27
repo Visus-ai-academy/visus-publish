@@ -39,6 +39,8 @@ export type ThemesPromptInput = {
   existing: string[];
   hint?: string;
   slots: MonthSlot[];
+  /** Ângulos que a análise de desempenho pediu para priorizar. */
+  learnings?: string[];
 };
 
 const WORD: Record<Format, string> = { image: "foto", carousel: "carrossel", reels: "reels", story: "stories" };
@@ -63,6 +65,7 @@ export function themesPrompt(i: ThemesPromptInput): { system: string; user: stri
     b.audience ? `Público: ${b.audience}` : "",
     b.forbidden_topics ? `Não fale de: ${b.forbidden_topics}` : "",
     i.existing.length ? `Já planejados (não repita): ${i.existing.slice(0, 40).join("; ")}` : "",
+    i.learnings?.length ? `A análise do desempenho da conta mostrou que funciona melhor (priorize): ${i.learnings.join("; ")}` : "",
     i.hint ? `Orientação: ${i.hint}` : "",
     `Vagas:\n${vagas.join("\n")}`,
   ]

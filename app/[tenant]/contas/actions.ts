@@ -24,3 +24,11 @@ export async function disconnect(slug: string, accountId: string) {
   await disconnectAccount(createAdminClient(), tenant.id, z.string().uuid().parse(accountId), user.id);
   revalidatePath(`/${slug}/contas`);
 }
+
+/** Troca por onde a conta publica (Meta ou Metricool). O banco confere o papel e se o provedor está ligado. */
+export async function setPublishVia(slug: string, accountId: string, via: "meta" | "metricool") {
+  const { role, supabase } = await resolveTenant(slug);
+  if (!can(role, "manage_tenant")) return;
+  await supabase.rpc("set_publish_via", { p_account: z.string().uuid().parse(accountId), p_via: z.enum(["meta", "metricool"]).parse(via) });
+  revalidatePath(`/${slug}/contas`);
+}

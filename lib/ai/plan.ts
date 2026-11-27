@@ -13,6 +13,7 @@ import { startPostVideo } from "./video";
 import { replaceMedia } from "./media";
 import { cadenceOutputSchema, cadencePrompt, toSlots } from "./prompts/cadence";
 import type { MonthSlot, Slot } from "@/lib/plan/cadence";
+import { themeLearnings } from "@/lib/insights/analysis";
 
 type Db = SupabaseClient<Database>;
 type Opts = { providers?: ProvidersConfig };
@@ -50,8 +51,8 @@ export async function suggestThemes(
   if (!input.slots.length) throw new PlanError("Não há vagas livres na cadência deste mês.");
   const provider = await pickProvider(db, tenantId, "caption");
   if (!provider) throw new PlanError(NO_KEY);
-  const brand = await loadBrand(db, tenantId, account.id);
-  const prompt = themesPrompt({ ...input, username: account.username, brand });
+  const [brand, learnings] = await Promise.all([loadBrand(db, tenantId, account.id), themeLearnings(db, tenantId, account.id)]);
+  const prompt = themesPrompt({ ...input, username: account.username, brand, learnings });
   const request = { source: "themes", account_id: account.id, month: input.monthLabel, slots: input.slots.length };
   let credits: Charge | null = null;
   try {

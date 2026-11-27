@@ -1,4 +1,5 @@
-import { NextResponse, type NextRequest } from "next/server";
+import { after, NextResponse, type NextRequest } from "next/server";
+import { collectAccount, insightsPort } from "@/lib/insights/collect";
 import { connectAccount } from "@/lib/meta/accounts";
 import { exchangeCode, getProfile, toLongLivedToken } from "@/lib/meta/client";
 import { getMetaConfig } from "@/lib/meta/config";
@@ -43,6 +44,9 @@ export async function GET(request: NextRequest) {
       expiresInSeconds: long.expires_in,
     });
     if (!result.ok) return done(`erro=${result.reason === "other_tenant" ? "outro_cliente" : "falha_meta"}`);
+    // Primeira leitura das métricas (90 dias de histórico) depois da resposta, sem segurar o login
+    const accountId = result.accountId;
+    after(() => collectAccount(createAdminClient(), insightsPort(cfg), tenant.id, accountId).catch(() => undefined));
     return done(`conectada=${encodeURIComponent(profile.username)}`);
   } catch {
     return done("erro=falha_meta");

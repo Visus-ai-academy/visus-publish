@@ -8,6 +8,8 @@ const schema = z.object({
   META_REDIRECT_URI: z.string().url(),
   META_GRAPH_VERSION: z.string().regex(/^v\d+\.\d+$/).default("v24.0"),
   META_GRAPH_BASE_URL: z.string().url().optional(),
+  // Apps novos da Meta: id da configuração do Login do Facebook para Empresas (login unificado)
+  META_LOGIN_CONFIG_ID: z.string().regex(/^\d+$/).optional(),
 });
 
 /** Lê as credenciais do app da Meta das variáveis de ambiente do servidor. */
@@ -19,6 +21,7 @@ export function getMetaConfig(): MetaConfig | null {
     appSecret: parsed.data.META_APP_SECRET,
     redirectUri: parsed.data.META_REDIRECT_URI,
     graphVersion: parsed.data.META_GRAPH_VERSION,
+    loginConfigId: parsed.data.META_LOGIN_CONFIG_ID,
     // Vazio em produção (graph.instagram.com). Só os testes e2e apontam para a Meta simulada.
     graphBase: parsed.data.META_GRAPH_BASE_URL,
   };

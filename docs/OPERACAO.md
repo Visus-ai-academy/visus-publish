@@ -29,10 +29,17 @@ Limitações conhecidas do Metricool:
 
 ## 1. App da Meta (uma vez)
 
-1. Em developers.facebook.com, crie um app do tipo **Empresa** e adicione o produto **Instagram** → "API do Instagram com login do Instagram".
-2. Em "Configurar login comercial do Instagram", cadastre a URL de redirecionamento: `https://SEU-DOMINIO/api/meta/oauth/callback` (igual a `META_REDIRECT_URI`).
-3. Copie o **ID do app do Instagram** e a **Chave secreta do app do Instagram** para `META_APP_ID` e `META_APP_SECRET` nas variáveis do servidor (nunca no código, no chat ou em `NEXT_PUBLIC_*`).
-4. Até o App Review ser aprovado (Fase 5), só contas com papel no app funcionam: em "Funções do app" → "Testadores do Instagram", adicione a conta profissional de teste e aceite o convite no Instagram (Configurações → Apps e sites).
+Apps novos da Meta só oferecem a **API do Instagram com login unificado** (Login do Facebook para Empresas). Não precisa de Página do Facebook, mas a conta do Instagram precisa estar num portfólio empresarial (Meta Business Suite).
+
+1. Em developers.facebook.com, crie um app e adicione o caso de uso **API do Instagram**. Em **Personalizar** → **API setup with Unified login**:
+   - em **URL de redirecionamento**, registre `https://SEU-DOMINIO/api/meta/oauth/callback` (igual a `META_REDIRECT_URI`) e salve;
+   - clique em **Criar nova configuração**: variação de login **Geral**, token **Token de acesso do usuário do sistema**, expiração **Nunca**, ativos **Conta do Instagram**, permissões `instagram_basic`, `instagram_content_publish` e `instagram_manage_insights`. Salve e copie o **ID da configuração** para `META_LOGIN_CONFIG_ID`.
+2. Em **Configurações do app** → **Básico**, copie o **ID do app** e a **Chave secreta do app** para `META_APP_ID` e `META_APP_SECRET` (só nas variáveis do servidor).
+3. Enquanto o app não passa pelo App Review (Fase 5), só pessoas com função no app (quem criou já tem) conseguem entrar.
+
+O login abre o Facebook, a pessoa escolhe a conta do Instagram e o app recebe um token do sistema que não vence (não há renovação; se o acesso for retirado, a conta pede para conectar de novo). Depois disso o app usa `graph.facebook.com` com o id da conta do Instagram.
+
+Apps antigos com "API com login do Instagram" continuam funcionando: deixe `META_LOGIN_CONFIG_ID` vazio e use o ID e a chave do app do Instagram.
 
 ## 2. Variáveis do servidor
 

@@ -3,7 +3,7 @@ import { SCREENS } from "@/components/shell/nav";
 import { EmptyState, ErrorNote } from "@/components/ui/states";
 import { Notice } from "@/components/ui/status";
 import { can } from "@/lib/auth/permissions";
-import { getMetaConfig } from "@/lib/meta/config";
+import { getMetaConfig, metaConfigProblems } from "@/lib/meta/config";
 import { loadMetricoolAuth } from "@/lib/metricool/auth";
 import type { MetricoolBrand } from "@/lib/metricool/client";
 import { listBrandsWith, metricoolEnv } from "@/lib/metricool/port";
@@ -49,6 +49,7 @@ export default async function AccountsPage({ params, searchParams }: PageProps<"
     isPlatformAdmin(),
   ]);
   const metaReady = getMetaConfig() !== null;
+  const metaProblems = metaReady ? [] : metaConfigProblems();
 
   // Marcas do Metricool só para a equipe da Visus, que vincula as contas
   let brands: MetricoolBrand[] = [];
@@ -82,6 +83,12 @@ export default async function AccountsPage({ params, searchParams }: PageProps<"
       <div className="flex max-w-[1040px] flex-col gap-6">
         {typeof sp.conectada === "string" ? <Notice tone="success">@{sp.conectada} conectada.</Notice> : null}
         {sp.metricool === "ok" ? <Notice tone="success">Metricool conectado. Agora vincule a marca de cada conta.</Notice> : null}
+        {platformAdmin && metaProblems.length > 0 ? (
+          <Notice tone="danger">
+            O login da Meta não está ativo: confira na Vercel {metaProblems.length > 1 ? "as variáveis" : "a variável"} {metaProblems.join(", ")} (marcada
+            em Production, sem espaços e sem aspas) e faça o Redeploy.
+          </Notice>
+        ) : null}
         {errorKey ? <Notice tone="danger">{ERRORS[errorKey] ?? "Não foi possível conectar a conta."}</Notice> : null}
 
         {platformAdmin || mcConn ? (
